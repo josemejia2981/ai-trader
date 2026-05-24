@@ -1,44 +1,112 @@
 # agents/trade_plan_agent.py
 
+ACCOUNT_SIZE = 10000
+RISK_PERCENT = 0.02
+MAX_CONTRACTS = 10
+
+
 def trade_plan_agent(state):
-    print("📋 Creando plan de trade...")
+    print("Creando plan de trade...")
 
     entry_ready = state.get("entry_ready", False)
-    price = state.get("price")
-    atr = state.get("atr")
-    entry_type = state.get("entry_type", "NONE")
+    strategy = state.get("option_strategy", "NO TRADE")
 
-    if not entry_ready or price is None or atr is None:
-        state["trade_plan"] = "No hay plan activo."
-        print("📋 Plan: No hay plan activo.")
+    option_entry = float(state.get("option_entry") or 0)
+    option_price = float(state.get("option_price") or 0)
+
+    real_option_price = option_entry if option_entry > 0 else option_price
+
+    max_risk_allowed = round(ACCOUNT_SIZE * RISK_PERCENT, 2)
+
+    state["max_risk_allowed"] = max_risk_allowed
+
+    if not entry_ready:
+        state["trade_plan"] = "No hay plan activo: entrada no confirmada."
+        state["contracts"] = 0
+        state["risk_amount"] = 0
+        state["potential_profit"] = 0
+        state["risk_reward"] = 0
+        state["trade_allowed"] = False
         return state
 
-    if "CALL" in entry_type:
-        stop_loss = round(price - atr, 2)
-        take_profit = round(price + (atr * 2), 2)
-    elif "PUT" in entry_type:
-        stop_loss = round(price + atr, 2)
-        take_profit = round(price - (atr * 2), 2)
-    else:
-        stop_loss = None
-        take_profit = None
+    if real_option_price <= 0:
+        state["trade_plan"] = "No hay plan activo: no hay precio real de opcion."
+        state["contracts"] = 0
+        state["risk_amount"] = 0
+        state["potential_profit"] = 0
+        state["risk_reward"] = 0
+        state["trade_allowed"] = False
+        return state
 
-    contracts = 2
-    risk_amount = 200.0
+    option_stop_loss = float(state.get("option_stop_loss") or 0)
+    option_take_profit = float(state.get("option_take_profit") or 0)
 
-    plan = (
-        f"{entry_type} confirmado. Entrada: {round(price, 2)}, "
-        f"Stop Loss: {stop_loss}, Take Profit: {take_profit}, "
-        f"Contratos: {contracts}, Riesgo estimado: ${risk_amount}"
+    if option_stop_loss <= 0:
+        option_stop_loss = round(real_option_price * 0.70, 2)
+
+    if option_take_profit <= 0:
+        option_take_profit = round(real_option_price * 1.50, 2)
+
+    cost_per_contract = round(real_option_price * 100, 2)
+
+    risk_per_contract = round((real_option_price - option_stop_loss) * 100, 2)
+
+    if risk_per_contract <= 0:
+        state["trade_plan"] = "Trade bloqueado: stop loss invalido."
+        state["contracts"] = 0
+        state["risk_amount"] = 0
+        state["potential_profit"] = 0
+        state["risk_reward"] = 0
+        state["trade_allowed"] = False
+        state["option_price_used"] = real_option_price
+        state["cost_per_contract"] = cost_per_contract
+        state["risk_per_contract"] = risk_per_contract
+        return state
+
+    contracts = int(max_risk_allowed // risk_per_contract)
+    contracts = min(contracts, MAX_CONTRACTS)
+
+    if contracts <= 0:
+        state["trade_plan"] = (
+            f"Trade bloqueado: riesgo por contrato ${risk_per_contract} "
+            f"mayor al riesgo permitido ${max_risk_allowed}."
+        )
+        state["contracts"] = 0
+        state["risk_amount"] = 0
+        state["potential_profit"] = 0
+        state["risk_reward"] = 0
+        state["trade_allowed"] = False
+        state["option_price_used"] = real_option_price
+        state["cost_per_contract"] = cost_per_contract
+        state["risk_per_contract"] = risk_per_contract
+        return state
+
+    risk_amount = round(risk_per_contract * contracts, 2)
+    potential_profit = round((option_take_profit - real_option_price) * 100 * contracts, 2)
+
+    risk_reward = round(potential_profit / risk_amount, 2) if risk_amount > 0 else 0
+
+    state["trade_plan"] = (
+        f"Estrategia: {strategy} | "
+        f"Contratos: {contracts} | "
+        f"Entrada opcion: ${real_option_price} | "
+        f"Costo por contrato: ${cost_per_contract} | "
+        f"Stop loss: ${option_stop_loss} | "
+        f"Take profit: ${option_take_profit} | "
+        f"Riesgo por contrato: ${risk_per_contract} | "
+        f"Riesgo total: ${risk_amount} | "
+        f"Ganancia potencial: ${potential_profit}"
     )
 
-    state["entry_price"] = round(price, 2)
-    state["stop_loss"] = stop_loss
-    state["take_profit"] = take_profit
     state["contracts"] = contracts
     state["risk_amount"] = risk_amount
-    state["trade_plan"] = plan
-
-    print(f"📋 Plan: {plan}")
+    state["potential_profit"] = potential_profit
+    state["risk_reward"] = risk_reward
+    state["stop_loss"] = option_stop_loss
+    state["take_profit"] = option_take_profit
+    state["option_price_used"] = real_option_price
+    state["cost_per_contract"] = cost_per_contract
+    state["risk_per_contract"] = risk_per_contract
+    state["trade_allowed"] = True
 
     return state

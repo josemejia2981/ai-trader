@@ -26,11 +26,24 @@ def report_agent(results):
             "risk": r.get("risk"),
             "score": r.get("score"),
             "rating": r.get("rating"),
+
             "entry_ready": r.get("entry_ready"),
             "entry_type": r.get("entry_type"),
             "entry_price": r.get("entry_price"),
             "stop_loss": r.get("stop_loss"),
             "take_profit": r.get("take_profit"),
+
+            "contracts": r.get("contracts"),
+            "risk_amount": r.get("risk_amount"),
+            "potential_profit": r.get("potential_profit"),
+            "risk_reward": r.get("risk_reward"),
+
+            "account_size": r.get("account_size"),
+            "risk_percent": r.get("risk_percent"),
+            "max_risk_allowed": r.get("max_risk_allowed"),
+            "risk_per_share": r.get("risk_per_share"),
+            "risk_per_contract": r.get("risk_per_contract"),
+
             "trade_plan": r.get("trade_plan"),
             "ai_analysis": r.get("ai_analysis"),
             "score_reasons": ", ".join(r.get("score_reasons", [])),
@@ -74,11 +87,17 @@ def report_agent(results):
                 <div><span>Tendencia</span><strong>{r.get("trend")}</strong></div>
                 <div><span>Señal</span><strong>{r.get("signal")}</strong></div>
                 <div><span>Riesgo</span><strong>{r.get("risk")}</strong></div>
-                <div><span>Entrada</span><strong>{r.get("entry_ready")}</strong></div>
+                <div><span>Entrada Lista</span><strong>{r.get("entry_ready")}</strong></div>
+
                 <div><span>Tipo Entrada</span><strong>{r.get("entry_type")}</strong></div>
                 <div><span>Entrada Precio</span><strong>{r.get("entry_price")}</strong></div>
                 <div><span>Stop Loss</span><strong>{r.get("stop_loss")}</strong></div>
                 <div><span>Take Profit</span><strong>{r.get("take_profit")}</strong></div>
+
+                <div><span>Contratos</span><strong>{r.get("contracts")}</strong></div>
+                <div><span>Riesgo Real</span><strong>${r.get("risk_amount")}</strong></div>
+                <div><span>Ganancia Potencial</span><strong>${r.get("potential_profit")}</strong></div>
+                <div><span>R/R</span><strong>{r.get("risk_reward")}</strong></div>
             </div>
 
             <div class="section">
