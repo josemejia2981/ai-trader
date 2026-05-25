@@ -14,11 +14,33 @@ from agents.entry_agent import entry_agent
 from agents.option_contract_agent import option_contract_agent
 from agents.trade_plan_agent import trade_plan_agent
 from agents.score_agent import score_agent
+from agents.portfolio_agent import portfolio_agent
 from agents.report_agent import report_agent
 from agents.options_scanner import run_auto_options_scanner
 
 
-SYMBOLS = ["AAPL", "TSLA", "NVDA", "MSFT"]
+SYMBOLS = [
+    "AAPL",
+    "MSFT",
+    "NVDA",
+    "TSLA",
+    "META",
+    "AMZN",
+    "GOOGL",
+    "AMD",
+    "NFLX",
+    "PLTR",
+    "AVGO",
+    "CRM",
+    "UBER",
+    "SNOW",
+    "SHOP",
+    "COIN",
+    "QQQ",
+    "SPY",
+    "IWM",
+    "SMH",
+]
 
 
 def main():
@@ -122,10 +144,12 @@ def main():
         print(f"Take Profit: ${state.get('take_profit')}")
         print(f"Trade permitido: {state.get('trade_allowed')}")
 
-    print("\nSTEP 9 SCANNER AUTOMATICO")
+    portfolio, portfolio_summary = portfolio_agent(results)
+
+    print("\nSTEP 10 SCANNER AUTOMATICO")
     auto_options_report = run_auto_options_scanner(results)
 
-    print("\nSTEP 10 REPORTE")
+    print("\nSTEP 11 REPORTE")
     report_files = report_agent(results)
 
     print("\nAnalisis finalizado.")

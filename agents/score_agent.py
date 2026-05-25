@@ -25,71 +25,65 @@ def score_agent(state):
     option_entry = float(state.get("option_entry") or 0)
     contracts = int(state.get("contracts") or 0)
 
-    # Tendencia
     if trend == "UP":
-        score += 20
+        score += 18
         reasons.append("Tendencia alcista")
     elif trend == "DOWN":
-        score += 10
+        score += 12
         reasons.append("Tendencia bajista")
 
-    # RSI
     if isinstance(rsi, (int, float)):
         if 50 <= rsi <= 65:
-            score += 15
+            score += 12
             reasons.append("RSI optimo")
         elif 65 < rsi <= 70:
-            score += 8
+            score += 6
             reasons.append("RSI aceptable")
         elif rsi > 80:
             score -= 20
             reasons.append("RSI sobrecomprado")
 
-    # MACD
     if isinstance(macd, (int, float)) and isinstance(macd_signal, (int, float)):
         if macd > macd_signal:
-            score += 12
+            score += 8
             reasons.append("MACD alcista")
 
-    # Volumen de la accion
     if isinstance(volume, (int, float)) and isinstance(avg_volume, (int, float)):
         if volume > avg_volume:
-            score += 10
+            score += 8
             reasons.append("Volumen accion superior al promedio")
 
-    # Entrada confirmada
     if entry_ready:
         score += 15
         reasons.append("Entrada confirmada")
+    else:
+        score -= 15
+        reasons.append("Entrada no confirmada")
 
-    # Riesgo de mercado
     if risk == "LOW":
         score += 8
         reasons.append("Riesgo de mercado bajo")
     elif risk == "HIGH":
-        score -= 15
+        score -= 20
         reasons.append("Riesgo de mercado alto")
 
-    # Trade permitido por control de riesgo
-    if trade_allowed:
-        score += 15
-        reasons.append("Trade permitido por gestion de riesgo")
+    if trade_allowed and contracts > 0:
+        score += 25
+        reasons.append("Trade ejecutable")
     else:
-        score -= 10
-        reasons.append("Trade no permitido por gestion de riesgo")
+        score -= 40
+        reasons.append("Trade no ejecutable")
 
-    # Risk Reward
     if risk_reward >= 2:
-        score += 12
+        score += 15
         reasons.append("Risk Reward excelente")
     elif risk_reward >= 1.5:
-        score += 8
+        score += 10
         reasons.append("Risk Reward saludable")
     elif 0 < risk_reward < 1.5:
-        score -= 5
+        score -= 10
         reasons.append("Risk Reward bajo")
 
-    # Liquidez del contrato
     if option_open_interest >= 1000:
         score += 10
         reasons.append("Open Interest fuerte")
@@ -104,7 +98,6 @@ def score_agent(state):
         score += 6
         reasons.append("Volumen de opcion aceptable")
 
-    # Score del contrato
     if option_contract_score >= 90:
         score += 10
         reasons.append("Contrato con score excelente")
@@ -115,12 +108,10 @@ def score_agent(state):
         score += 4
         reasons.append("Contrato con score aceptable")
 
-    # Premium razonable
-    if 1 <= option_entry <= 5:
+    if 1 <= option_entry <= 8:
         score += 5
         reasons.append("Premium dentro del rango ideal")
 
-    # Contratos calculados
     if contracts > 0:
         score += 5
         reasons.append("Tamano de posicion calculado")

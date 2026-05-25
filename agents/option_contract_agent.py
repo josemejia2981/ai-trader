@@ -9,10 +9,13 @@ MIN_DTE = 30
 MAX_DTE = 60
 
 MIN_PREMIUM = 1.00
-MAX_PREMIUM = 5.00
+MAX_PREMIUM = 8.00
 
 MIN_VOLUME = 1
 MIN_OPEN_INTEREST = 10
+
+MAX_CALL_DISTANCE_PERCENT = 0.10
+MAX_PUT_DISTANCE_PERCENT = 0.10
 
 
 def get_dte(expiration):
@@ -57,6 +60,11 @@ def option_contract_agent(state):
             return state
 
         price = float(state.get("price", 0))
+
+        if price <= 0:
+            print(f"Precio invalido para {symbol}")
+            return state
+
         all_candidates = []
 
         for expiration, dte in valid_expirations:
@@ -65,8 +73,20 @@ def option_contract_agent(state):
 
                 if option_side == "CALL":
                     options = chain.calls.copy()
+                    min_strike = price
+                    max_strike = price * (1 + MAX_CALL_DISTANCE_PERCENT)
+                    options = options[
+                        (options["strike"] >= min_strike) &
+                        (options["strike"] <= max_strike)
+                    ]
                 else:
                     options = chain.puts.copy()
+                    min_strike = price * (1 - MAX_PUT_DISTANCE_PERCENT)
+                    max_strike = price
+                    options = options[
+                        (options["strike"] >= min_strike) &
+                        (options["strike"] <= max_strike)
+                    ]
 
                 if options.empty:
                     continue
@@ -74,6 +94,7 @@ def option_contract_agent(state):
                 options["dte"] = dte
                 options["expiration"] = expiration
                 options["distance"] = abs(options["strike"] - price)
+                options["distance_percent"] = (options["distance"] / price * 100).round(2)
 
                 for col in ["bid", "ask", "lastPrice", "volume", "openInterest", "strike"]:
                     if col in options.columns:
@@ -104,16 +125,24 @@ def option_contract_agent(state):
                 options.loc[options["openInterest"] >= 50, "score"] += 10
                 options.loc[options["openInterest"] >= 100, "score"] += 10
                 options.loc[options["openInterest"] >= 300, "score"] += 10
+                options.loc[options["openInterest"] >= 1000, "score"] += 10
 
                 options.loc[options["volume"] >= 5, "score"] += 10
                 options.loc[options["volume"] >= 20, "score"] += 10
                 options.loc[options["volume"] >= 50, "score"] += 10
+                options.loc[options["volume"] >= 500, "score"] += 10
 
-                options.loc[options["distance"] <= price * 0.05, "score"] += 20
-                options.loc[options["distance"] <= price * 0.10, "score"] += 10
+                options.loc[options["distance_percent"] <= 3, "score"] += 25
+                options.loc[(options["distance_percent"] > 3) & (options["distance_percent"] <= 6), "score"] += 18
+                options.loc[(options["distance_percent"] > 6) & (options["distance_percent"] <= 10), "score"] += 10
 
-                options.loc[(options["dte"] >= 30) & (options["dte"] <= 45), "score"] += 10
-                options.loc[(options["entry"] >= 1.50) & (options["entry"] <= 4.00), "score"] += 10
+                options.loc[(options["dte"] >= 30) & (options["dte"] <= 45), "score"] += 15
+                options.loc[(options["dte"] > 45) & (options["dte"] <= 60), "score"] += 10
+
+                options.loc[(options["entry"] >= 1.50) & (options["entry"] <= 5.00), "score"] += 10
+                options.loc[(options["entry"] > 5.00) & (options["entry"] <= 8.00), "score"] += 5
+
+                options["score"] = options["score"].clip(upper=100)
 
                 all_candidates.append(options)
 
@@ -124,7 +153,7 @@ def option_contract_agent(state):
         if not all_candidates:
             print(
                 f"No hay contratos compatibles para {symbol} "
-                f"con premium entre ${MIN_PREMIUM} y ${MAX_PREMIUM}"
+                f"con strike dentro de 10% y premium entre ${MIN_PREMIUM} y ${MAX_PREMIUM}"
             )
             return state
 
@@ -158,6 +187,7 @@ def option_contract_agent(state):
         state["option_volume"] = int(best.get("volume", 0) or 0)
         state["option_open_interest"] = int(best.get("openInterest", 0) or 0)
         state["option_contract_score"] = int(best.get("score", 0) or 0)
+        state["option_distance_percent"] = float(best.get("distance_percent", 0) or 0)
 
         print("Contrato agregado al state:")
         print(f"Contrato: {state['option_contract']}")
@@ -168,6 +198,7 @@ def option_contract_agent(state):
         print(f"Entrada opcion: {state['option_entry']}")
         print(f"Stop opcion: {state['option_stop_loss']}")
         print(f"Take Profit opcion: {state['option_take_profit']}")
+        print(f"Distancia strike: {state['option_distance_percent']}%")
         print(f"Volumen: {state['option_volume']}")
         print(f"Open Interest: {state['option_open_interest']}")
         print(f"Score contrato: {state['option_contract_score']}")

@@ -4,6 +4,8 @@ ACCOUNT_SIZE = 10000
 RISK_PERCENT = 0.02
 MAX_CONTRACTS = 10
 
+RISK_TOLERANCE_PERCENT = 0.15
+
 
 def trade_plan_agent(state):
     print("Creando plan de trade...")
@@ -17,8 +19,15 @@ def trade_plan_agent(state):
     real_option_price = option_entry if option_entry > 0 else option_price
 
     max_risk_allowed = round(ACCOUNT_SIZE * RISK_PERCENT, 2)
+    max_risk_with_tolerance = round(
+        max_risk_allowed * (1 + RISK_TOLERANCE_PERCENT),
+        2
+    )
 
+    state["account_size"] = ACCOUNT_SIZE
+    state["risk_percent"] = RISK_PERCENT
     state["max_risk_allowed"] = max_risk_allowed
+    state["max_risk_with_tolerance"] = max_risk_with_tolerance
 
     if not entry_ready:
         state["trade_plan"] = "No hay plan activo: entrada no confirmada."
@@ -27,6 +36,7 @@ def trade_plan_agent(state):
         state["potential_profit"] = 0
         state["risk_reward"] = 0
         state["trade_allowed"] = False
+        state["risk_warning"] = ""
         return state
 
     if real_option_price <= 0:
@@ -36,6 +46,7 @@ def trade_plan_agent(state):
         state["potential_profit"] = 0
         state["risk_reward"] = 0
         state["trade_allowed"] = False
+        state["risk_warning"] = ""
         return state
 
     option_stop_loss = float(state.get("option_stop_loss") or 0)
@@ -48,7 +59,6 @@ def trade_plan_agent(state):
         option_take_profit = round(real_option_price * 1.50, 2)
 
     cost_per_contract = round(real_option_price * 100, 2)
-
     risk_per_contract = round((real_option_price - option_stop_loss) * 100, 2)
 
     if risk_per_contract <= 0:
@@ -58,31 +68,49 @@ def trade_plan_agent(state):
         state["potential_profit"] = 0
         state["risk_reward"] = 0
         state["trade_allowed"] = False
+        state["risk_warning"] = "Stop loss invalido."
         state["option_price_used"] = real_option_price
         state["cost_per_contract"] = cost_per_contract
         state["risk_per_contract"] = risk_per_contract
         return state
 
     contracts = int(max_risk_allowed // risk_per_contract)
-    contracts = min(contracts, MAX_CONTRACTS)
+    risk_warning = ""
 
     if contracts <= 0:
-        state["trade_plan"] = (
-            f"Trade bloqueado: riesgo por contrato ${risk_per_contract} "
-            f"mayor al riesgo permitido ${max_risk_allowed}."
-        )
-        state["contracts"] = 0
-        state["risk_amount"] = 0
-        state["potential_profit"] = 0
-        state["risk_reward"] = 0
-        state["trade_allowed"] = False
-        state["option_price_used"] = real_option_price
-        state["cost_per_contract"] = cost_per_contract
-        state["risk_per_contract"] = risk_per_contract
-        return state
+        if risk_per_contract <= max_risk_with_tolerance:
+            contracts = 1
+            risk_warning = (
+                f"Advertencia: riesgo ligeramente superior al limite. "
+                f"Permitido con tolerancia. Riesgo contrato ${risk_per_contract}, "
+                f"limite normal ${max_risk_allowed}."
+            )
+        else:
+            state["trade_plan"] = (
+                f"Trade bloqueado: riesgo por contrato ${risk_per_contract} "
+                f"mayor al limite con tolerancia ${max_risk_with_tolerance}."
+            )
+            state["contracts"] = 0
+            state["risk_amount"] = 0
+            state["potential_profit"] = 0
+            state["risk_reward"] = 0
+            state["trade_allowed"] = False
+            state["risk_warning"] = (
+                f"Riesgo demasiado alto. Riesgo contrato ${risk_per_contract}, "
+                f"limite con tolerancia ${max_risk_with_tolerance}."
+            )
+            state["option_price_used"] = real_option_price
+            state["cost_per_contract"] = cost_per_contract
+            state["risk_per_contract"] = risk_per_contract
+            return state
+
+    contracts = min(contracts, MAX_CONTRACTS)
 
     risk_amount = round(risk_per_contract * contracts, 2)
-    potential_profit = round((option_take_profit - real_option_price) * 100 * contracts, 2)
+    potential_profit = round(
+        (option_take_profit - real_option_price) * 100 * contracts,
+        2
+    )
 
     risk_reward = round(potential_profit / risk_amount, 2) if risk_amount > 0 else 0
 
@@ -98,6 +126,9 @@ def trade_plan_agent(state):
         f"Ganancia potencial: ${potential_profit}"
     )
 
+    if risk_warning:
+        state["trade_plan"] += f" | {risk_warning}"
+
     state["contracts"] = contracts
     state["risk_amount"] = risk_amount
     state["potential_profit"] = potential_profit
@@ -107,6 +138,7 @@ def trade_plan_agent(state):
     state["option_price_used"] = real_option_price
     state["cost_per_contract"] = cost_per_contract
     state["risk_per_contract"] = risk_per_contract
+    state["risk_warning"] = risk_warning
     state["trade_allowed"] = True
 
     return state
