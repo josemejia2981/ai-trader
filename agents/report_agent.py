@@ -6,8 +6,8 @@ from datetime import datetime
 
 
 def report_agent(results):
-    print("\nSTEP 9 💾 REPORTE")
-    print("💾 Guardando reportes CSV y HTML...")
+    print("\nSTEP 9 REPORTE")
+    print("Guardando reportes CSV y HTML...")
 
     os.makedirs("reports", exist_ok=True)
 
@@ -29,20 +29,45 @@ def report_agent(results):
 
             "entry_ready": r.get("entry_ready"),
             "entry_type": r.get("entry_type"),
+
             "entry_price": r.get("entry_price"),
             "stop_loss": r.get("stop_loss"),
             "take_profit": r.get("take_profit"),
+
+            "option_strategy": r.get("option_strategy"),
+            "option_reason": r.get("option_reason"),
+            "option_confidence": r.get("option_confidence"),
+
+            "option_contract": r.get("option_contract"),
+            "option_type": r.get("option_type"),
+            "option_strike": r.get("option_strike"),
+            "option_expiration": r.get("option_expiration"),
+            "option_dte": r.get("option_dte"),
+
+            "option_entry": r.get("option_entry"),
+            "option_stop_loss": r.get("option_stop_loss"),
+            "option_take_profit": r.get("option_take_profit"),
+
+            "option_bid": r.get("option_bid"),
+            "option_ask": r.get("option_ask"),
+            "option_last_price": r.get("option_last_price"),
+            "option_volume": r.get("option_volume"),
+            "option_open_interest": r.get("option_open_interest"),
+            "option_contract_score": r.get("option_contract_score"),
 
             "contracts": r.get("contracts"),
             "risk_amount": r.get("risk_amount"),
             "potential_profit": r.get("potential_profit"),
             "risk_reward": r.get("risk_reward"),
+            "trade_allowed": r.get("trade_allowed"),
 
             "account_size": r.get("account_size"),
             "risk_percent": r.get("risk_percent"),
             "max_risk_allowed": r.get("max_risk_allowed"),
             "risk_per_share": r.get("risk_per_share"),
             "risk_per_contract": r.get("risk_per_contract"),
+            "cost_per_contract": r.get("cost_per_contract"),
+            "option_price_used": r.get("option_price_used"),
 
             "trade_plan": r.get("trade_plan"),
             "ai_analysis": r.get("ai_analysis"),
@@ -55,14 +80,14 @@ def report_agent(results):
     cards_html = ""
 
     for i, r in enumerate(results, start=1):
-        score = r.get("score", 0)
+        score = r.get("score", 0) or 0
         rating = r.get("rating", "N/A")
 
-        if score >= 85:
+        if score >= 90:
             badge_class = "excellent"
-        elif score >= 70:
+        elif score >= 75:
             badge_class = "strong"
-        elif score >= 55:
+        elif score >= 60:
             badge_class = "interesting"
         elif score >= 40:
             badge_class = "watch"
@@ -76,7 +101,7 @@ def report_agent(results):
             <div class="card-header">
                 <div>
                     <h2>#{i} {r.get("symbol")}</h2>
-                    <p class="price">${round(r.get("price", 0), 2)}</p>
+                    <p class="price">${round(r.get("price", 0) or 0, 2)}</p>
                 </div>
                 <div class="badge {badge_class}">
                     {score}/100<br>{rating}
@@ -90,28 +115,43 @@ def report_agent(results):
                 <div><span>Entrada Lista</span><strong>{r.get("entry_ready")}</strong></div>
 
                 <div><span>Tipo Entrada</span><strong>{r.get("entry_type")}</strong></div>
-                <div><span>Entrada Precio</span><strong>{r.get("entry_price")}</strong></div>
-                <div><span>Stop Loss</span><strong>{r.get("stop_loss")}</strong></div>
-                <div><span>Take Profit</span><strong>{r.get("take_profit")}</strong></div>
-
+                <div><span>Trade Permitido</span><strong>{r.get("trade_allowed")}</strong></div>
                 <div><span>Contratos</span><strong>{r.get("contracts")}</strong></div>
+                <div><span>R/R</span><strong>{r.get("risk_reward")}</strong></div>
+
+                <div><span>Contrato</span><strong>{r.get("option_contract")}</strong></div>
+                <div><span>Tipo Opción</span><strong>{r.get("option_type")}</strong></div>
+                <div><span>Strike</span><strong>{r.get("option_strike")}</strong></div>
+                <div><span>Expiración</span><strong>{r.get("option_expiration")}</strong></div>
+
+                <div><span>Entrada Opción</span><strong>${r.get("option_entry")}</strong></div>
+                <div><span>Stop Opción</span><strong>${r.get("option_stop_loss")}</strong></div>
+                <div><span>Take Profit Opción</span><strong>${r.get("option_take_profit")}</strong></div>
+                <div><span>DTE</span><strong>{r.get("option_dte")}</strong></div>
+
+                <div><span>Volumen Opción</span><strong>{r.get("option_volume")}</strong></div>
+                <div><span>Open Interest</span><strong>{r.get("option_open_interest")}</strong></div>
+                <div><span>Score Contrato</span><strong>{r.get("option_contract_score")}</strong></div>
+                <div><span>Costo Contrato</span><strong>${r.get("cost_per_contract")}</strong></div>
+
                 <div><span>Riesgo Real</span><strong>${r.get("risk_amount")}</strong></div>
                 <div><span>Ganancia Potencial</span><strong>${r.get("potential_profit")}</strong></div>
-                <div><span>R/R</span><strong>{r.get("risk_reward")}</strong></div>
+                <div><span>Riesgo Máximo Permitido</span><strong>${r.get("max_risk_allowed")}</strong></div>
+                <div><span>Riesgo por Contrato</span><strong>${r.get("risk_per_contract")}</strong></div>
             </div>
 
             <div class="section">
-                <h3>📋 Plan de Trade</h3>
+                <h3>Plan de Trade</h3>
                 <p>{r.get("trade_plan")}</p>
             </div>
 
             <div class="section">
-                <h3>🏆 Razones del Score</h3>
+                <h3>Razones del Score</h3>
                 <p>{reasons}</p>
             </div>
 
             <div class="section ai">
-                <h3>🤖 Análisis IA</h3>
+                <h3>Analisis IA</h3>
                 <p>{r.get("ai_analysis")}</p>
             </div>
         </div>
@@ -226,11 +266,29 @@ def report_agent(results):
         .ai {{
             border-left-color: #a855f7;
         }}
+
+        @media (max-width: 900px) {{
+            .grid {{
+                grid-template-columns: repeat(2, 1fr);
+            }}
+
+            .card-header {{
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 16px;
+            }}
+        }}
+
+        @media (max-width: 600px) {{
+            .grid {{
+                grid-template-columns: 1fr;
+            }}
+        }}
     </style>
 </head>
 
 <body>
-    <h1>🚀 AI Trader Report</h1>
+    <h1>AI Trader Report</h1>
     <p class="subtitle">Reporte generado: {datetime.now().strftime("%Y-%m-%d %H:%M")}</p>
 
     {cards_html}
@@ -241,7 +299,7 @@ def report_agent(results):
     with open(html_file, "w", encoding="utf-8") as f:
         f.write(html)
 
-    print(f"✅ CSV guardado en: {csv_file}")
-    print(f"✅ HTML guardado en: {html_file}")
+    print(f"CSV guardado en: {csv_file}")
+    print(f"HTML guardado en: {html_file}")
 
     return html_file
