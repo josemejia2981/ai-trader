@@ -1,22 +1,96 @@
 # agents/portfolio_agent.py
 
+import pandas as pd
+from pathlib import Path
+from datetime import datetime
+
 MAX_POSITIONS = 4
 MAX_TOTAL_RISK = 600
+REPORTS_DIR = Path("reports")
+
+
+def safe_float(value, default=0):
+    try:
+        if value is None:
+            return default
+        return float(value)
+    except Exception:
+        return default
+
+
+def safe_int(value, default=0):
+    try:
+        if value is None:
+            return default
+        return int(value)
+    except Exception:
+        return default
+
+
+def get_contract_symbol(trade):
+    if trade.get("contractSymbol"):
+        return trade.get("contractSymbol")
+
+    if trade.get("option_contract"):
+        return trade.get("option_contract")
+
+    best_contract = trade.get("best_contract")
+
+    if isinstance(best_contract, dict):
+        return best_contract.get("contractSymbol")
+
+    return None
 
 
 def portfolio_agent(results):
     print("\nSTEP 9 PORTFOLIO")
     print("Construyendo cartera diaria...")
 
+    REPORTS_DIR.mkdir(exist_ok=True)
+
     valid_trades = []
 
     for trade in results:
-        if trade.get("trade_allowed") is True and int(trade.get("contracts") or 0) > 0:
-            valid_trades.append(trade)
+        if not isinstance(trade, dict):
+            continue
+
+        score = safe_float(trade.get("score"))
+        risk_amount = safe_float(trade.get("risk_amount"))
+        potential_profit = safe_float(trade.get("potential_profit"))
+        contracts = safe_int(trade.get("contracts"), 1)
+        trade_allowed = trade.get("trade_allowed")
+        entry_ready = trade.get("entry_ready")
+
+        contract_symbol = get_contract_symbol(trade)
+
+        if score <= 0:
+            continue
+
+        if risk_amount <= 0:
+            continue
+
+        if potential_profit <= 0:
+            continue
+
+        if not contract_symbol:
+            continue
+
+        if contracts <= 0:
+            contracts = 1
+            trade["contracts"] = 1
+
+        if trade_allowed is False:
+            continue
+
+        if entry_ready is False:
+            continue
+
+        trade["contractSymbol"] = contract_symbol
+        valid_trades.append(trade)
 
     valid_trades = sorted(
         valid_trades,
-        key=lambda x: x.get("score", 0),
+        key=lambda x: safe_float(x.get("score")),
         reverse=True
     )
 
@@ -30,8 +104,8 @@ def portfolio_agent(results):
         if len(portfolio) >= MAX_POSITIONS:
             break
 
-        risk_amount = float(trade.get("risk_amount") or 0)
-        potential_profit = float(trade.get("potential_profit") or 0)
+        risk_amount = safe_float(trade.get("risk_amount"))
+        potential_profit = safe_float(trade.get("potential_profit"))
         option_type = trade.get("option_type")
 
         if total_risk + risk_amount > MAX_TOTAL_RISK:
@@ -64,12 +138,17 @@ def portfolio_agent(results):
         for i, trade in enumerate(portfolio, start=1):
             print("--------------------------------")
             print(f"#{i} {trade.get('symbol')}")
-            print(f"Contrato: {trade.get('option_contract')}")
+            print(f"Contrato: {trade.get('contractSymbol')}")
             print(f"Tipo: {trade.get('option_type')}")
             print(f"Contratos: {trade.get('contracts')}")
+            print(f"Entrada: {trade.get('entry_price')}")
+            print(f"Stop Loss: {trade.get('stop_loss')}")
+            print(f"Take Profit: {trade.get('take_profit')}")
             print(f"Riesgo: ${trade.get('risk_amount')}")
             print(f"Ganancia potencial: ${trade.get('potential_profit')}")
+            print(f"Risk/Reward: {trade.get('risk_reward')}")
             print(f"Score: {trade.get('score')}")
+            print(f"Rating: {trade.get('rating')}")
 
     print("--------------------------------")
     print(f"Total posiciones: {portfolio_summary['positions']}")
@@ -78,4 +157,46 @@ def portfolio_agent(results):
     print(f"CALLS: {portfolio_summary['call_count']}")
     print(f"PUTS: {portfolio_summary['put_count']}")
 
-    return portfolio, portfolio_summary
+    if portfolio:
+        portfolio_rows = []
+
+        for trade in portfolio:
+            portfolio_rows.append({
+                "symbol": trade.get("symbol"),
+                "contractSymbol": trade.get("contractSymbol"),
+                "option_type": trade.get("option_type"),
+                "contracts": trade.get("contracts"),
+                "entry_price": trade.get("entry_price"),
+                "stop_loss": trade.get("stop_loss"),
+                "take_profit": trade.get("take_profit"),
+                "risk_amount": trade.get("risk_amount"),
+                "potential_profit": trade.get("potential_profit"),
+                "risk_reward": trade.get("risk_reward"),
+                "score": trade.get("score"),
+                "rating": trade.get("rating"),
+                "dte": trade.get("dte"),
+                "strike": trade.get("strike"),
+                "expiration": trade.get("expiration"),
+                "bid": trade.get("bid"),
+                "ask": trade.get("ask"),
+                "mid_price": trade.get("mid_price"),
+                "spread": trade.get("spread"),
+                "spread_pct": trade.get("spread_pct"),
+                "volume": trade.get("volume"),
+                "openInterest": trade.get("openInterest"),
+                "contract_quality_score": trade.get("contract_quality_score"),
+            })
+
+        df = pd.DataFrame(portfolio_rows)
+
+        timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M")
+        file_path = REPORTS_DIR / f"portfolio_{timestamp}.csv"
+
+        df.to_csv(file_path, index=False)
+
+        print(f"Portfolio CSV guardado en: {file_path}")
+
+    return {
+        "portfolio": portfolio,
+        "summary": portfolio_summary
+    }

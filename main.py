@@ -1,9 +1,3 @@
-# main.py
-
-import sys
-
-sys.stdout.reconfigure(encoding="utf-8")
-
 print("INICIANDO BOT...")
 
 from agents.market_data import get_market_data
@@ -14,149 +8,231 @@ from agents.entry_agent import entry_agent
 from agents.option_contract_agent import option_contract_agent
 from agents.trade_plan_agent import trade_plan_agent
 from agents.score_agent import score_agent
-from agents.portfolio_agent import portfolio_agent
 from agents.report_agent import report_agent
-from agents.options_scanner import run_auto_options_scanner
+
+try:
+    from agents.options_scanner import options_scanner
+except Exception:
+    options_scanner = None
+
+try:
+    from agents.portfolio_agent import portfolio_agent
+except Exception:
+    portfolio_agent = None
 
 
 SYMBOLS = [
-    "AAPL",
-    "MSFT",
-    "NVDA",
-    "TSLA",
-    "META",
-    "AMZN",
-    "GOOGL",
-    "AMD",
-    "NFLX",
-    "PLTR",
-    "AVGO",
-    "CRM",
-    "UBER",
-    "SNOW",
-    "SHOP",
-    "COIN",
-    "QQQ",
-    "SPY",
-    "IWM",
-    "SMH",
+    "AAPL", "MSFT", "NVDA", "TSLA", "META",
+    "AMZN", "GOOGL", "AMD", "NFLX", "PLTR",
+    "AVGO", "CRM", "UBER", "SNOW", "SHOP",
+    "COIN", "QQQ", "SPY"
 ]
+
+
+def show_contract_info(state):
+    contract = state.get("best_contract")
+
+    if not contract:
+        print("No se encontro contrato valido.")
+        print("Estado contrato:", state.get("contract_status", "N/A"))
+        return
+
+    print("")
+    print("CONTRATO SELECCIONADO")
+    print("------------------------------")
+    print("Contrato:", contract.get("contractSymbol"))
+    print("Tipo:", contract.get("option_type"))
+    print("Expiracion:", contract.get("expiration"))
+    print("DTE:", contract.get("dte"))
+    print("Strike:", contract.get("strike"))
+    print("Precio accion:", contract.get("underlying_price"))
+    print("Last Price:", contract.get("lastPrice"))
+    print("Bid:", contract.get("bid"))
+    print("Ask:", contract.get("ask"))
+    print("Mid Price:", contract.get("mid_price"))
+    print("Spread:", contract.get("spread"))
+    print("Spread %:", contract.get("spread_pct"))
+    print("Volumen:", contract.get("volume"))
+    print("Open Interest:", contract.get("openInterest"))
+    print("Delta estimado:", contract.get("delta_estimate"))
+    print("Score contrato:", contract.get("contract_quality_score"))
+    print("")
+    print("PLAN DEL CONTRATO")
+    print("------------------------------")
+    print("Entrada recomendada:", contract.get("entry_price"))
+    print("Stop Loss:", contract.get("stop_loss"))
+    print("Take Profit:", contract.get("take_profit"))
+    print("Riesgo estimado:", contract.get("risk_amount"))
+    print("Ganancia potencial:", contract.get("potential_profit"))
+    print("Risk / Reward:", contract.get("risk_reward"))
+    print("------------------------------")
+
+
+def normalize_contract_state(state):
+    contract = state.get("best_contract")
+
+    if not isinstance(contract, dict):
+        return state
+
+    state["contractSymbol"] = contract.get("contractSymbol")
+    state["option_contract"] = contract.get("contractSymbol")
+    state["option_type"] = contract.get("option_type")
+    state["expiration"] = contract.get("expiration")
+    state["dte"] = contract.get("dte")
+    state["strike"] = contract.get("strike")
+    state["underlying_price"] = contract.get("underlying_price")
+    state["lastPrice"] = contract.get("lastPrice")
+    state["bid"] = contract.get("bid")
+    state["ask"] = contract.get("ask")
+    state["mid_price"] = contract.get("mid_price")
+    state["spread"] = contract.get("spread")
+    state["spread_pct"] = contract.get("spread_pct")
+    state["volume"] = contract.get("volume")
+    state["openInterest"] = contract.get("openInterest")
+    state["delta_estimate"] = contract.get("delta_estimate")
+    state["contract_quality_score"] = contract.get("contract_quality_score")
+
+    state["entry_price"] = contract.get("entry_price")
+    state["stop_loss"] = contract.get("stop_loss")
+    state["take_profit"] = contract.get("take_profit")
+    state["risk_amount"] = contract.get("risk_amount")
+    state["potential_profit"] = contract.get("potential_profit")
+    state["risk_reward"] = contract.get("risk_reward")
+
+    if not state.get("contracts"):
+        state["contracts"] = 1
+
+    return state
+
+
+def print_portfolio_result(portfolio_result):
+    if not isinstance(portfolio_result, dict):
+        print("Portfolio no devolvio formato valido.")
+        return
+
+    portfolio = portfolio_result.get("portfolio", [])
+    summary = portfolio_result.get("summary", {})
+
+    if not portfolio:
+        print("No hay portfolio recomendado hoy.")
+        return
+
+    for i, item in enumerate(portfolio, start=1):
+        print("")
+        print(f"#{i}")
+        print("Symbol:", item.get("symbol"))
+        print("Contrato:", item.get("contractSymbol"))
+        print("Tipo:", item.get("option_type"))
+        print("Contratos:", item.get("contracts"))
+        print("Entrada:", item.get("entry_price"))
+        print("Stop:", item.get("stop_loss"))
+        print("Take Profit:", item.get("take_profit"))
+        print("Riesgo:", item.get("risk_amount"))
+        print("Ganancia:", item.get("potential_profit"))
+        print("Risk/Reward:", item.get("risk_reward"))
+        print("Score:", item.get("score"))
+        print("Rating:", item.get("rating"))
+
+    print("")
+    print("RESUMEN PORTFOLIO")
+    print("------------------------------")
+    print("Total posiciones:", summary.get("positions"))
+    print("Riesgo total:", summary.get("total_risk"))
+    print("Ganancia potencial total:", summary.get("total_potential_profit"))
+    print("CALLS:", summary.get("call_count"))
+    print("PUTS:", summary.get("put_count"))
 
 
 def main():
     results = []
 
     for symbol in SYMBOLS:
-        print("\n==============================")
+        print("")
+        print("==============================")
         print(f"ANALIZANDO {symbol}")
         print("==============================")
 
-        print("STEP 1 DATA")
-        state = get_market_data(symbol)
-        state["symbol"] = symbol
+        try:
+            print("STEP 1 DATA")
+            state = get_market_data(symbol)
+            state["symbol"] = symbol
 
-        print("STEP 2 SIGNAL")
-        state = signal_agent(state)
+            print("STEP 2 SIGNAL")
+            state = signal_agent(state)
 
-        print("STEP 3 RISK")
-        state = risk_agent(state)
+            print("STEP 3 RISK")
+            state = risk_agent(state)
 
-        print("STEP 4 OPTIONS")
-        state = options_agent(state)
+            print("STEP 4 OPTIONS")
+            state = options_agent(state)
 
-        print("STEP 5 ENTRY")
-        state = entry_agent(state)
+            print("STEP 5 ENTRY")
+            state = entry_agent(state)
 
-        print("STEP 6 OPTION CONTRACT")
-        state = option_contract_agent(state)
+            print("STEP 6 OPTION CONTRACT")
+            state = option_contract_agent(state)
+            state = normalize_contract_state(state)
+            show_contract_info(state)
 
-        print("STEP 7 TRADE PLAN")
-        state = trade_plan_agent(state)
+            print("STEP 7 TRADE PLAN")
+            state = trade_plan_agent(state)
 
-        print("STEP 8 SCORE")
-        state = score_agent(state)
+            state = normalize_contract_state(state)
 
-        results.append(state)
+            print("STEP 8 SCORE")
+            state = score_agent(state)
 
-    results = sorted(
-        results,
-        key=lambda x: x.get("score", 0),
-        reverse=True
-    )
+            results.append(state)
 
-    print("\n==============================")
-    print("IA SOLO PARA TOP 1")
+        except Exception as e:
+            print(f"ERROR analizando {symbol}: {e}")
+            results.append({
+                "symbol": symbol,
+                "error": str(e),
+                "score": 0,
+                "rating": "ERROR"
+            })
+
+    print("")
+    print("==============================")
+    print("GENERANDO REPORTE")
     print("==============================")
 
-    for i, state in enumerate(results):
-        if i == 0:
-            state["ai_analysis"] = (
-                f"Evaluacion tecnica automatica: {state.get('symbol')} tiene "
-                f"score {state.get('score')}, rating {state.get('rating')}, "
-                f"tendencia {state.get('trend')}, riesgo {state.get('risk')}, "
-                f"entrada {state.get('entry_type')}."
-            )
-        else:
-            state["ai_analysis"] = "IA pendiente: solo se analiza la mejor oportunidad."
+    try:
+        report_agent(results)
+    except Exception as e:
+        print("Error generando reporte:", e)
 
-    print("\n==============================")
-    print("TOP OPORTUNIDADES")
+    if options_scanner:
+        print("")
+        print("==============================")
+        print("SCANNER AUTOMATICO")
+        print("==============================")
+
+        try:
+            scanner_results = options_scanner(SYMBOLS)
+            print("Scanner completado.")
+        except Exception as e:
+            print("Error en scanner:", e)
+
+    if portfolio_agent:
+        print("")
+        print("==============================")
+        print("PORTFOLIO DEL DIA")
+        print("==============================")
+
+        try:
+            portfolio_result = portfolio_agent(results)
+            print("Portfolio generado.")
+            print_portfolio_result(portfolio_result)
+
+        except Exception as e:
+            print("Error generando portfolio:", e)
+
+    print("")
     print("==============================")
-
-    for i, state in enumerate(results, start=1):
-        print("\n--------------------------------")
-        print(f"#{i}")
-        print(f"Simbolo: {state.get('symbol')}")
-        print(f"Precio accion: {state.get('price')}")
-        print(f"Tendencia: {state.get('trend')}")
-        print(f"Senal: {state.get('signal')}")
-        print(f"Riesgo mercado: {state.get('risk')}")
-        print(f"Score: {state.get('score')}/100")
-        print(f"Rating: {state.get('rating')}")
-        print(f"Razones: {', '.join(state.get('score_reasons', []))}")
-        print(f"IA: {state.get('ai_analysis')}")
-
-        print("\nOPCIONES")
-        print(f"Estrategia: {state.get('option_strategy')}")
-        print(f"Motivo: {state.get('option_reason')}")
-        print(f"Confianza: {state.get('option_confidence')}%")
-        print(f"Strike sugerido: {state.get('strike')}")
-        print(f"DTE sugerido: {state.get('dte')}")
-        print(f"Precio opcion estimado: ${state.get('option_price')}")
-
-        if state.get("option_contract"):
-            print("\nCONTRATO SELECCIONADO")
-            print(f"Contrato: {state.get('option_contract')}")
-            print(f"Tipo: {state.get('option_type')}")
-            print(f"Strike real: {state.get('option_strike')}")
-            print(f"Expiracion: {state.get('option_expiration')}")
-            print(f"Entrada opcion real: ${state.get('option_entry')}")
-            print(f"Stop opcion real: ${state.get('option_stop_loss')}")
-            print(f"Take Profit opcion real: ${state.get('option_take_profit')}")
-
-        print("\nPLAN DE TRADE")
-        print(f"Plan: {state.get('trade_plan')}")
-        print(f"Contratos recomendados: {state.get('contracts')}")
-        print(f"Riesgo real: ${state.get('risk_amount')}")
-        print(f"Ganancia potencial: ${state.get('potential_profit')}")
-        print(f"Risk/Reward: {state.get('risk_reward')}")
-        print(f"Stop Loss: ${state.get('stop_loss')}")
-        print(f"Take Profit: ${state.get('take_profit')}")
-        print(f"Trade permitido: {state.get('trade_allowed')}")
-
-    portfolio, portfolio_summary = portfolio_agent(results)
-
-    print("\nSTEP 10 SCANNER AUTOMATICO")
-    auto_options_report = run_auto_options_scanner(results)
-
-    print("\nSTEP 11 REPORTE")
-    report_files = report_agent(results)
-
-    print("\nAnalisis finalizado.")
-    print(f"Reporte principal: {report_files}")
-
-    if auto_options_report:
-        print(f"Reporte opciones automatico: {auto_options_report}")
+    print("BOT FINALIZADO")
+    print("==============================")
 
 
 if __name__ == "__main__":
