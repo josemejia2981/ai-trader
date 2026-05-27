@@ -3,7 +3,10 @@
 import yfinance as yf
 import pandas as pd
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
+
+NY_TIMEZONE = ZoneInfo("America/New_York")
 
 MIN_DTE = 30
 MAX_DTE = 120
@@ -17,6 +20,12 @@ OPTION_MULTIPLIER = 100
 MAX_RISK_PER_TRADE = 200
 MAX_ENTRY_PRICE = 6.00
 
+MIN_DELTA = 0.70
+
+
+def now_new_york():
+    return datetime.now(NY_TIMEZONE)
+
 
 def safe_float(value, default=0.0):
     try:
@@ -29,9 +38,9 @@ def safe_float(value, default=0.0):
 
 def get_dte(expiration_date):
     try:
-        exp = datetime.strptime(expiration_date, "%Y-%m-%d")
-        today = datetime.now()
-        return max((exp - today).days, 0)
+        exp = datetime.strptime(expiration_date, "%Y-%m-%d").replace(tzinfo=NY_TIMEZONE)
+        today = now_new_york()
+        return max((exp.date() - today.date()).days, 0)
     except Exception:
         return 0
 
@@ -41,31 +50,35 @@ def estimate_delta(option_type, strike, price):
     price = safe_float(price)
 
     if price <= 0 or strike <= 0:
-        return 0.50
+        return 0.0
 
     moneyness = strike / price
 
     if option_type == "CALL":
-        if moneyness <= 0.95:
-            return 0.70
-        elif moneyness <= 1.03:
-            return 0.55
-        elif moneyness <= 1.10:
-            return 0.40
+        if moneyness <= 0.90:
+            return 0.85
+        elif moneyness <= 0.95:
+            return 0.75
+        elif moneyness <= 1.00:
+            return 0.65
+        elif moneyness <= 1.05:
+            return 0.45
         else:
             return 0.25
 
     if option_type == "PUT":
-        if moneyness >= 1.05:
-            return 0.70
-        elif moneyness >= 0.97:
-            return 0.55
-        elif moneyness >= 0.90:
-            return 0.40
+        if moneyness >= 1.10:
+            return -0.85
+        elif moneyness >= 1.05:
+            return -0.75
+        elif moneyness >= 1.00:
+            return -0.65
+        elif moneyness >= 0.95:
+            return -0.45
         else:
-            return 0.25
+            return -0.25
 
-    return 0.50
+    return 0.0
 
 
 def score_contract(row, price, option_type):
@@ -127,8 +140,7 @@ def score_contract(row, price, option_type):
     else:
         moneyness_score = 4
 
-    delta_score = 15 if 0.25 <= delta <= 0.70 else 5
-
+    delta_score = 20 if abs(delta) >= MIN_DELTA else 0
     price_score = 15 if entry_price <= MAX_ENTRY_PRICE else 0
     risk_score = 20 if risk_amount <= MAX_RISK_PER_TRADE else 0
 
@@ -159,6 +171,7 @@ def score_contract(row, price, option_type):
         "spread_score": spread_score,
         "dte_score": dte_score,
         "moneyness_score": moneyness_score,
+        "delta_score": delta_score,
         "price_score": price_score,
         "risk_score": risk_score,
         "contract_quality_score": final_score,
@@ -167,14 +180,12 @@ def score_contract(row, price, option_type):
 
 def get_option_candidates(symbol, option_type="CALL", min_dte=MIN_DTE, max_dte=MAX_DTE):
     ticker = yf.Ticker(symbol)
-
     history = ticker.history(period="5d")
 
     if history.empty:
         return pd.DataFrame()
 
     price = safe_float(history["Close"].iloc[-1])
-
     expirations = ticker.options
 
     if not expirations:
@@ -190,11 +201,7 @@ def get_option_candidates(symbol, option_type="CALL", min_dte=MIN_DTE, max_dte=M
 
         try:
             chain = ticker.option_chain(expiration)
-
-            if option_type == "CALL":
-                df = chain.calls.copy()
-            else:
-                df = chain.puts.copy()
+            df = chain.calls.copy() if option_type == "CALL" else chain.puts.copy()
 
             if df.empty:
                 continue
@@ -239,7 +246,8 @@ def get_option_candidates(symbol, option_type="CALL", min_dte=MIN_DTE, max_dte=M
         (contracts["openInterest"] >= MIN_OPEN_INTEREST) &
         (contracts["spread_pct"] <= MAX_SPREAD_PCT) &
         (contracts["entry_price"] <= MAX_ENTRY_PRICE) &
-        (contracts["risk_amount"] <= MAX_RISK_PER_TRADE)
+        (contracts["risk_amount"] <= MAX_RISK_PER_TRADE) &
+        (contracts["delta_estimate"].abs() >= MIN_DELTA)
     ]
 
     if contracts.empty:
@@ -248,6 +256,7 @@ def get_option_candidates(symbol, option_type="CALL", min_dte=MIN_DTE, max_dte=M
     contracts = contracts.sort_values(
         by=[
             "contract_quality_score",
+            "delta_score",
             "risk_reward",
             "openInterest",
             "volume"
@@ -266,9 +275,7 @@ def select_best_option_contract(symbol, direction="CALL"):
     if candidates.empty:
         return None
 
-    best = candidates.iloc[0].to_dict()
-
-    return best
+    return candidates.iloc[0].to_dict()
 
 
 def option_contract_agent(state):
@@ -278,13 +285,14 @@ def option_contract_agent(state):
     signal = state.get("signal", "")
     entry_type = state.get("entry_type", "")
 
+    state["analysis_datetime_ny"] = now_new_york().strftime("%Y-%m-%d %I:%M:%S %p New York")
+
     if not symbol:
         state["best_contract"] = None
         state["contract_status"] = "No symbol provided."
         return state
 
     direction = "CALL"
-
     text = f"{strategy} {trend} {signal} {entry_type}".upper()
 
     if "PUT" in text or "DOWN" in text or "BEARISH" in text or "SELL" in text:
@@ -298,47 +306,30 @@ def option_contract_agent(state):
         if best_contract is None:
             state["best_contract"] = None
             state["contract_status"] = (
-                f"No contract found under risk limit. "
-                f"Max risk allowed: ${MAX_RISK_PER_TRADE}, "
-                f"max entry price: ${MAX_ENTRY_PRICE}"
+                f"No contract found. Requirements: "
+                f"min delta {MIN_DELTA}, "
+                f"max risk ${MAX_RISK_PER_TRADE}, "
+                f"max entry price ${MAX_ENTRY_PRICE}."
             )
             return state
 
         state["best_contract"] = best_contract
         state["contract_status"] = "Contract selected successfully."
 
-        state["contractSymbol"] = best_contract.get("contractSymbol")
+        fields = [
+            "contractSymbol", "option_type", "expiration", "dte", "strike",
+            "underlying_price", "lastPrice", "bid", "ask", "mid_price",
+            "spread", "spread_pct", "volume", "openInterest",
+            "delta_estimate", "contract_quality_score", "liquidity_score",
+            "spread_score", "dte_score", "moneyness_score", "delta_score",
+            "price_score", "risk_score", "entry_price", "stop_loss",
+            "take_profit", "risk_amount", "potential_profit", "risk_reward"
+        ]
+
+        for field in fields:
+            state[field] = best_contract.get(field)
+
         state["option_contract"] = best_contract.get("contractSymbol")
-        state["option_type"] = best_contract.get("option_type")
-        state["expiration"] = best_contract.get("expiration")
-        state["dte"] = best_contract.get("dte")
-        state["strike"] = best_contract.get("strike")
-        state["underlying_price"] = best_contract.get("underlying_price")
-
-        state["lastPrice"] = best_contract.get("lastPrice")
-        state["bid"] = best_contract.get("bid")
-        state["ask"] = best_contract.get("ask")
-        state["mid_price"] = best_contract.get("mid_price")
-        state["spread"] = best_contract.get("spread")
-        state["spread_pct"] = best_contract.get("spread_pct")
-        state["volume"] = best_contract.get("volume")
-        state["openInterest"] = best_contract.get("openInterest")
-        state["delta_estimate"] = best_contract.get("delta_estimate")
-
-        state["contract_quality_score"] = best_contract.get("contract_quality_score")
-        state["liquidity_score"] = best_contract.get("liquidity_score")
-        state["spread_score"] = best_contract.get("spread_score")
-        state["dte_score"] = best_contract.get("dte_score")
-        state["moneyness_score"] = best_contract.get("moneyness_score")
-        state["price_score"] = best_contract.get("price_score")
-        state["risk_score"] = best_contract.get("risk_score")
-
-        state["entry_price"] = best_contract.get("entry_price")
-        state["stop_loss"] = best_contract.get("stop_loss")
-        state["take_profit"] = best_contract.get("take_profit")
-        state["risk_amount"] = best_contract.get("risk_amount")
-        state["potential_profit"] = best_contract.get("potential_profit")
-        state["risk_reward"] = best_contract.get("risk_reward")
 
         if not state.get("contracts"):
             state["contracts"] = 1

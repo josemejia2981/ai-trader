@@ -1,8 +1,11 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import subprocess
+import sys
 from pathlib import Path
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 st.set_page_config(
     page_title="AI TRADER | Executive Dashboard",
@@ -12,6 +15,16 @@ st.set_page_config(
 
 REPORTS_DIR = Path("reports")
 OPTION_MULTIPLIER = 100
+NY_TIMEZONE = ZoneInfo("America/New_York")
+
+
+def get_ny_time():
+    return datetime.now(NY_TIMEZONE)
+
+
+def get_ny_time_text():
+    return get_ny_time().strftime("%Y-%m-%d %I:%M:%S %p New York")
+
 
 st.markdown("""
 <style>
@@ -89,6 +102,20 @@ def recommendation_from_score(score):
         return "🔴 EVITAR"
 
 
+def run_analysis():
+    try:
+        result = subprocess.run(
+            [sys.executable, "main.py"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace"
+        )
+        return result
+    except Exception as e:
+        return None, str(e)
+
+
 def prepare_portfolio(df):
     if df.empty:
         return df
@@ -115,7 +142,7 @@ def prepare_portfolio(df):
 
     risk_col = find_column(df, ["risk_amount", "risk", "max_risk"])
     profit_col = find_column(df, ["potential_profit", "profit", "expected_profit"])
-    score_col = find_column(df, ["score", "final_score", "institutional_score"])
+    score_col = find_column(df, ["score", "final_score", "institutional_score", "contract_quality_score"])
     confidence_col = find_column(df, ["confidence", "ai_confidence", "option_confidence"])
 
     if contracts_col is None:
@@ -190,6 +217,51 @@ def prepare_portfolio(df):
     return df
 
 
+st.title("📊 AI TRADER Executive Dashboard")
+st.caption("Panel profesional para entradas, salidas, riesgo, ganancia potencial, precio actual y Portfolio del Día.")
+
+h1, h2, h3 = st.columns([2, 1, 1])
+
+with h1:
+    st.success("Sistema activo")
+
+with h2:
+    st.write(f"**Fecha NY:** {get_ny_time().strftime('%Y-%m-%d')}")
+
+with h3:
+    st.write(f"**Hora NY:** {get_ny_time().strftime('%I:%M:%S %p')}")
+
+st.markdown("### 🚀 Control de análisis")
+
+b1, b2 = st.columns([1, 2])
+
+with b1:
+    run_button = st.button("▶️ Ejecutar análisis ahora", use_container_width=True)
+
+with b2:
+    st.info(f"Última actualización visual: {get_ny_time_text()}")
+
+if run_button:
+    with st.spinner("Ejecutando análisis AI TRADER..."):
+        result = subprocess.run(
+            [sys.executable, "main.py"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace"
+        )
+
+    if result.returncode == 0:
+        st.success("✅ Análisis ejecutado correctamente.")
+        with st.expander("Ver salida del análisis"):
+            st.code(result.stdout)
+        st.rerun()
+    else:
+        st.error("❌ Error ejecutando el análisis.")
+        st.code(result.stderr)
+
+st.divider()
+
 latest_trades_file = get_latest_file("trades_*.csv")
 latest_scanner_file = get_latest_file("options_scanner_*.csv")
 latest_portfolio_file = get_latest_file("portfolio_*.csv")
@@ -207,31 +279,15 @@ if portfolio_df.empty:
 
 portfolio_df = prepare_portfolio(portfolio_df)
 
-st.title("📊 AI TRADER Executive Dashboard")
-st.caption("Panel profesional para entradas, salidas, riesgo, ganancia potencial, precio actual y Portfolio del Día.")
-
-h1, h2, h3 = st.columns([2, 1, 1])
-
-with h1:
-    st.success("Sistema activo")
-
-with h2:
-    st.write(f"**Fecha:** {datetime.now().strftime('%Y-%m-%d')}")
-
-with h3:
-    st.write(f"**Hora:** {datetime.now().strftime('%H:%M:%S')}")
-
-st.divider()
-
 if portfolio_df.empty:
-    st.warning("No hay reportes disponibles. Ejecuta primero main.py.")
+    st.warning("No hay reportes disponibles. Presiona el botón Ejecutar análisis ahora.")
     st.stop()
 
 
 symbol_col = find_column(portfolio_df, ["symbol", "Symbol", "ticker", "Ticker"])
 contract_col = find_column(portfolio_df, ["contractSymbol", "contract", "option_contract", "contract_symbol"])
 type_col = find_column(portfolio_df, ["option_type", "type", "strategy", "entry_type"])
-score_col = find_column(portfolio_df, ["score", "final_score", "institutional_score"])
+score_col = find_column(portfolio_df, ["score", "final_score", "institutional_score", "contract_quality_score"])
 contracts_col = find_column(portfolio_df, ["contracts", "quantity", "qty"])
 price_col = find_column(portfolio_df, ["price", "lastPrice", "last_price", "underlying_price", "option_price"])
 current_price_col = find_column(portfolio_df, ["current_price", "market_price", "price", "underlying_price", "last_price"])
@@ -246,10 +302,12 @@ rr_col = find_column(portfolio_df, ["risk_reward"])
 recommendation_col = find_column(portfolio_df, ["recommendation"])
 distance_col = find_column(portfolio_df, ["distance_to_entry_pct"])
 entry_status_col = find_column(portfolio_df, ["entry_status"])
+delta_col = find_column(portfolio_df, ["delta_estimate", "delta"])
 
 
 st.sidebar.title("AI TRADER")
 st.sidebar.caption("Panel de Control Ejecutivo")
+st.sidebar.info(f"Hora NY: {get_ny_time().strftime('%I:%M:%S %p')}")
 
 filtered_df = portfolio_df.copy()
 
@@ -267,13 +325,17 @@ if score_col:
     min_score = st.sidebar.slider("Puntuación mínima", 0, 100, 0)
     filtered_df = filtered_df[filtered_df[score_col] >= min_score]
 
+if delta_col:
+    min_delta = st.sidebar.slider("Delta mínimo", 0.00, 1.00, 0.70, 0.05)
+    filtered_df = filtered_df[filtered_df[delta_col].abs() >= min_delta]
+
 if recommendation_col:
     recs = sorted(filtered_df[recommendation_col].dropna().unique().tolist())
     selected_recs = st.sidebar.multiselect("Filtrar recomendación", recs, default=recs)
     filtered_df = filtered_df[filtered_df[recommendation_col].isin(selected_recs)]
 
 st.sidebar.divider()
-st.sidebar.caption("Prioridad: score alto + Risk/Reward fuerte + entrada cercana.")
+st.sidebar.caption("Prioridad: delta mínimo 0.70 + score alto + Risk/Reward fuerte + entrada cercana.")
 
 
 total_positions = len(filtered_df)
@@ -308,7 +370,6 @@ portfolio_day_df = portfolio_day_df.head(3)
 
 if not portfolio_day_df.empty:
     p1, p2, p3 = st.columns(3)
-
     cols = [p1, p2, p3]
 
     for i, (_, row) in enumerate(portfolio_day_df.iterrows()):
@@ -320,12 +381,14 @@ if not portfolio_day_df.empty:
             profit = row.get(profit_col, 0) if profit_col else 0
             rr = row.get(rr_col, 0) if rr_col else 0
             recommendation = row.get(recommendation_col, "N/A") if recommendation_col else "N/A"
+            delta = row.get(delta_col, "N/A") if delta_col else "N/A"
 
             with st.container(border=True):
                 st.markdown(f"### #{i + 1} {symbol}")
                 st.caption(str(trade_type))
                 st.write(str(recommendation))
                 st.metric("Score", number(score))
+                st.metric("Delta", number(delta) if delta != "N/A" else "N/A")
                 st.metric("Riesgo", money(risk))
                 st.metric("Ganancia Potencial", money(profit))
                 st.metric("Risk / Reward", number(rr))
@@ -355,6 +418,7 @@ if not filtered_df.empty:
     recommendation = trade_day.get(recommendation_col, "N/A") if recommendation_col else "N/A"
     distance = trade_day.get(distance_col, 0) if distance_col else 0
     entry_status = trade_day.get(entry_status_col, "N/A") if entry_status_col else "N/A"
+    delta = trade_day.get(delta_col, "N/A") if delta_col else "N/A"
 
     with st.container(border=True):
         t1, t2 = st.columns([3, 1])
@@ -382,7 +446,7 @@ if not filtered_df.empty:
         i.metric("Risk / Reward", number(rr))
         j.metric("Score Institucional", number(score))
         k.metric("DTE", dte)
-        l.metric("Confianza", f"{number(confidence)}%")
+        l.metric("Delta", number(delta) if delta != "N/A" else "N/A")
 
         conf_value = max(0, min(to_float(confidence), 100))
         st.progress(conf_value / 100)
@@ -415,6 +479,7 @@ for _, row in top_df.iterrows():
     recommendation = row.get(recommendation_col, "N/A") if recommendation_col else "N/A"
     distance = row.get(distance_col, 0) if distance_col else 0
     entry_status = row.get(entry_status_col, "N/A") if entry_status_col else "N/A"
+    delta = row.get(delta_col, "N/A") if delta_col else "N/A"
 
     with st.container(border=True):
         c1, c2 = st.columns([3, 1])
@@ -432,13 +497,14 @@ for _, row in top_df.iterrows():
         x3.metric("Distancia", f"{number(distance)}%")
         x4.metric("Estado", entry_status)
 
-        y1, y2, y3, y4, y5, y6 = st.columns(6)
+        y1, y2, y3, y4, y5, y6, y7 = st.columns(7)
         y1.metric("Stop", money(stop))
         y2.metric("Salida", money(target))
         y3.metric("Riesgo", money(risk))
         y4.metric("Ganancia", money(profit))
         y5.metric("R/R", number(rr))
-        y6.metric("Score / DTE", f"{number(score)} / {dte}")
+        y6.metric("Delta", number(delta) if delta != "N/A" else "N/A")
+        y7.metric("Score / DTE", f"{number(score)} / {dte}")
 
 
 st.subheader("Tabla Ejecutiva")
@@ -461,6 +527,7 @@ for col in [
     profit_col,
     rr_col,
     dte_col,
+    delta_col,
     confidence_col,
     score_col
 ]:
@@ -533,7 +600,7 @@ if not filtered_df.empty:
         - Ganancia potencial estimada: {money(total_profit)}
         - Risk/Reward promedio: {number(avg_rr)}
 
-        **Regla sugerida:** priorizar COMPRA FUERTE, entrada cercana, Risk/Reward mayor de 2.00 y riesgo controlado.
+        **Regla sugerida:** priorizar contratos con Delta mínimo 0.70, COMPRA FUERTE, entrada cercana, Risk/Reward mayor de 2.00 y riesgo controlado.
         """
     )
 
@@ -570,4 +637,4 @@ with r3:
         st.warning("No hay HTML.")
 
 st.divider()
-st.caption("AI TRADER | Executive Options Intelligence Dashboard")
+st.caption("AI TRADER | Executive Options Intelligence Dashboard | Timezone: America/New_York")
