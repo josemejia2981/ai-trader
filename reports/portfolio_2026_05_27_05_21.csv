@@ -1,0 +1,2 @@
+symbol,contractSymbol,option_type,contracts,entry_price,stop_loss,take_profit,risk_amount,potential_profit,risk_reward,score,rating,dte,strike,expiration,bid,ask,mid_price,spread,spread_pct,volume,openInterest,contract_quality_score
+NVDA,NVDA260821C00420000,CALL,1,0.12,0.08,0.22,4.0,10.0,2.5,90,EXCELENTE,86,420.0,2026-08-21,0.11,0.13,0.12,0.02,16.67,266.0,7931,100.0

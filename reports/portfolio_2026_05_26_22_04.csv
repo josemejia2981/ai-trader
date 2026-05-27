@@ -1,0 +1,4 @@
+symbol,contractSymbol,option_type,contracts,entry_price,stop_loss,take_profit,risk_amount,potential_profit,risk_reward,score,rating,dte,strike,expiration,bid,ask,mid_price,spread,spread_pct,volume,openInterest,contract_quality_score
+PLTR,PLTR260717P00120000,PUT,1,3.08,2.87,6.15,123.0,205.0,1.67,87,FUERTE,51,120.0,2026-07-17,3.05,3.1,3.08,0.05,1.62,851.0,15628.0,100.0
+NVDA,NVDA260717C00220000,CALL,1,10.7,4.51,9.68,194.0,323.0,1.66,85,FUERTE,51,220.0,2026-07-17,10.65,10.75,10.7,0.1,0.93,10482.0,78934.0,100.0
+NFLX,NFLX260717P00075000,PUT,2,0.91,1.84,3.94,158.0,262.0,1.66,75,FUERTE,51,75.0,2026-07-17,0.87,0.95,0.91,0.08,8.79,4636.0,59812.0,100.0

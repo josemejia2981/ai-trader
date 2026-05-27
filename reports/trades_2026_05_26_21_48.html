@@ -1,0 +1,1317 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>AI Trader Report</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #0f172a;
+            color: #e5e7eb;
+            padding: 30px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #38bdf8;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #94a3b8;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: #111827;
+            border: 1px solid #334155;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.35);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #334155;
+            padding-bottom: 16px;
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            margin: 0;
+            color: #f8fafc;
+        }
+
+        .price {
+            font-size: 24px;
+            color: #22c55e;
+            margin: 8px 0 0;
+        }
+
+        .badge {
+            padding: 14px 20px;
+            border-radius: 14px;
+            text-align: center;
+            font-weight: bold;
+            color: white;
+        }
+
+        .excellent { background: #16a34a; }
+        .strong { background: #2563eb; }
+        .interesting { background: #ca8a04; }
+        .watch { background: #9333ea; }
+        .discard { background: #dc2626; }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 14px;
+            margin-bottom: 20px;
+        }
+
+        .grid div {
+            background: #1e293b;
+            padding: 14px;
+            border-radius: 12px;
+        }
+
+        .grid span {
+            display: block;
+            color: #94a3b8;
+            font-size: 13px;
+            margin-bottom: 6px;
+        }
+
+        .grid strong {
+            color: #f8fafc;
+        }
+
+        .section {
+            background: #020617;
+            border-left: 4px solid #38bdf8;
+            padding: 14px 18px;
+            border-radius: 10px;
+            margin-top: 14px;
+        }
+
+        .section h3 {
+            margin-top: 0;
+            color: #38bdf8;
+        }
+
+        .ai {
+            border-left-color: #a855f7;
+        }
+
+        @media (max-width: 900px) {
+            .grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .card-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 16px;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <h1>AI Trader Report</h1>
+    <p class="subtitle">Reporte generado: 2026-05-26 21:48</p>
+
+    
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h2>#1 PLTR</h2>
+                    <p class="price">$136.6</p>
+                </div>
+                <div class="badge strong">
+                    87/100<br>FUERTE
+                </div>
+            </div>
+
+            <div class="grid">
+                <div><span>Tendencia</span><strong>DOWN</strong></div>
+                <div><span>Señal</span><strong>HOLD</strong></div>
+                <div><span>Riesgo</span><strong>MEDIUM</strong></div>
+                <div><span>Entrada Lista</span><strong>True</strong></div>
+
+                <div><span>Tipo Entrada</span><strong>PULLBACK PUT</strong></div>
+                <div><span>Trade Permitido</span><strong>True</strong></div>
+                <div><span>Contratos</span><strong>1</strong></div>
+                <div><span>R/R</span><strong>1.67</strong></div>
+
+                <div><span>Contrato</span><strong>None</strong></div>
+                <div><span>Tipo Opción</span><strong>PUT</strong></div>
+                <div><span>Strike</span><strong>None</strong></div>
+                <div><span>Expiración</span><strong>None</strong></div>
+
+                <div><span>Entrada Opción</span><strong>$None</strong></div>
+                <div><span>Stop Opción</span><strong>$None</strong></div>
+                <div><span>Take Profit Opción</span><strong>$None</strong></div>
+                <div><span>DTE</span><strong>None</strong></div>
+
+                <div><span>Volumen Opción</span><strong>None</strong></div>
+                <div><span>Open Interest</span><strong>None</strong></div>
+                <div><span>Score Contrato</span><strong>None</strong></div>
+                <div><span>Costo Contrato</span><strong>$410.0</strong></div>
+
+                <div><span>Riesgo Real</span><strong>$123.0</strong></div>
+                <div><span>Ganancia Potencial</span><strong>$205.0</strong></div>
+                <div><span>Riesgo Máximo Permitido</span><strong>$200.0</strong></div>
+                <div><span>Riesgo por Contrato</span><strong>$123.0</strong></div>
+            </div>
+
+            <div class="section">
+                <h3>Plan de Trade</h3>
+                <p>Estrategia: WATCHLIST PUT | Contratos: 1 | Entrada opcion: $4.1 | Costo por contrato: $410.0 | Stop loss: $2.87 | Take profit: $6.15 | Riesgo por contrato: $123.0 | Riesgo total: $123.0 | Ganancia potencial: $205.0</p>
+            </div>
+
+            <div class="section">
+                <h3>Razones del Score</h3>
+                <p>Tendencia bajista, RSI optimo, MACD alcista, Entrada confirmada, Trade ejecutable, Risk Reward saludable, Tamano de posicion calculado</p>
+            </div>
+
+            <div class="section ai">
+                <h3>Analisis IA</h3>
+                <p>Evaluacion tecnica automatica: PLTR tiene score 87, rating FUERTE, tendencia DOWN, riesgo MEDIUM, entrada PULLBACK PUT.</p>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h2>#2 NVDA</h2>
+                    <p class="price">$214.86</p>
+                </div>
+                <div class="badge strong">
+                    85/100<br>FUERTE
+                </div>
+            </div>
+
+            <div class="grid">
+                <div><span>Tendencia</span><strong>UP</strong></div>
+                <div><span>Señal</span><strong>HOLD</strong></div>
+                <div><span>Riesgo</span><strong>MEDIUM</strong></div>
+                <div><span>Entrada Lista</span><strong>True</strong></div>
+
+                <div><span>Tipo Entrada</span><strong>PULLBACK CALL</strong></div>
+                <div><span>Trade Permitido</span><strong>True</strong></div>
+                <div><span>Contratos</span><strong>1</strong></div>
+                <div><span>R/R</span><strong>1.66</strong></div>
+
+                <div><span>Contrato</span><strong>None</strong></div>
+                <div><span>Tipo Opción</span><strong>CALL</strong></div>
+                <div><span>Strike</span><strong>None</strong></div>
+                <div><span>Expiración</span><strong>None</strong></div>
+
+                <div><span>Entrada Opción</span><strong>$None</strong></div>
+                <div><span>Stop Opción</span><strong>$None</strong></div>
+                <div><span>Take Profit Opción</span><strong>$None</strong></div>
+                <div><span>DTE</span><strong>None</strong></div>
+
+                <div><span>Volumen Opción</span><strong>None</strong></div>
+                <div><span>Open Interest</span><strong>None</strong></div>
+                <div><span>Score Contrato</span><strong>None</strong></div>
+                <div><span>Costo Contrato</span><strong>$645.0</strong></div>
+
+                <div><span>Riesgo Real</span><strong>$194.0</strong></div>
+                <div><span>Ganancia Potencial</span><strong>$323.0</strong></div>
+                <div><span>Riesgo Máximo Permitido</span><strong>$200.0</strong></div>
+                <div><span>Riesgo por Contrato</span><strong>$194.0</strong></div>
+            </div>
+
+            <div class="section">
+                <h3>Plan de Trade</h3>
+                <p>Estrategia: WATCHLIST CALL | Contratos: 1 | Entrada opcion: $6.45 | Costo por contrato: $645.0 | Stop loss: $4.51 | Take profit: $9.68 | Riesgo por contrato: $194.0 | Riesgo total: $194.0 | Ganancia potencial: $323.0</p>
+            </div>
+
+            <div class="section">
+                <h3>Razones del Score</h3>
+                <p>Tendencia alcista, RSI optimo, Entrada confirmada, Trade ejecutable, Risk Reward saludable, Tamano de posicion calculado</p>
+            </div>
+
+            <div class="section ai">
+                <h3>Analisis IA</h3>
+                <p>IA pendiente: solo se analiza la mejor oportunidad.</p>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h2>#3 NFLX</h2>
+                    <p class="price">$87.68</p>
+                </div>
+                <div class="badge strong">
+                    75/100<br>FUERTE
+                </div>
+            </div>
+
+            <div class="grid">
+                <div><span>Tendencia</span><strong>DOWN</strong></div>
+                <div><span>Señal</span><strong>HOLD</strong></div>
+                <div><span>Riesgo</span><strong>MEDIUM</strong></div>
+                <div><span>Entrada Lista</span><strong>True</strong></div>
+
+                <div><span>Tipo Entrada</span><strong>PULLBACK PUT</strong></div>
+                <div><span>Trade Permitido</span><strong>True</strong></div>
+                <div><span>Contratos</span><strong>2</strong></div>
+                <div><span>R/R</span><strong>1.66</strong></div>
+
+                <div><span>Contrato</span><strong>None</strong></div>
+                <div><span>Tipo Opción</span><strong>PUT</strong></div>
+                <div><span>Strike</span><strong>None</strong></div>
+                <div><span>Expiración</span><strong>None</strong></div>
+
+                <div><span>Entrada Opción</span><strong>$None</strong></div>
+                <div><span>Stop Opción</span><strong>$None</strong></div>
+                <div><span>Take Profit Opción</span><strong>$None</strong></div>
+                <div><span>DTE</span><strong>None</strong></div>
+
+                <div><span>Volumen Opción</span><strong>None</strong></div>
+                <div><span>Open Interest</span><strong>None</strong></div>
+                <div><span>Score Contrato</span><strong>None</strong></div>
+                <div><span>Costo Contrato</span><strong>$263.0</strong></div>
+
+                <div><span>Riesgo Real</span><strong>$158.0</strong></div>
+                <div><span>Ganancia Potencial</span><strong>$262.0</strong></div>
+                <div><span>Riesgo Máximo Permitido</span><strong>$200.0</strong></div>
+                <div><span>Riesgo por Contrato</span><strong>$79.0</strong></div>
+            </div>
+
+            <div class="section">
+                <h3>Plan de Trade</h3>
+                <p>Estrategia: WATCHLIST PUT | Contratos: 2 | Entrada opcion: $2.63 | Costo por contrato: $263.0 | Stop loss: $1.84 | Take profit: $3.94 | Riesgo por contrato: $79.0 | Riesgo total: $158.0 | Ganancia potencial: $262.0</p>
+            </div>
+
+            <div class="section">
+                <h3>Razones del Score</h3>
+                <p>Tendencia bajista, MACD alcista, Entrada confirmada, Trade ejecutable, Risk Reward saludable, Tamano de posicion calculado</p>
+            </div>
+
+            <div class="section ai">
+                <h3>Analisis IA</h3>
+                <p>IA pendiente: solo se analiza la mejor oportunidad.</p>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h2>#4 SHOP</h2>
+                    <p class="price">$104.9</p>
+                </div>
+                <div class="badge strong">
+                    75/100<br>FUERTE
+                </div>
+            </div>
+
+            <div class="grid">
+                <div><span>Tendencia</span><strong>DOWN</strong></div>
+                <div><span>Señal</span><strong>HOLD</strong></div>
+                <div><span>Riesgo</span><strong>MEDIUM</strong></div>
+                <div><span>Entrada Lista</span><strong>True</strong></div>
+
+                <div><span>Tipo Entrada</span><strong>PULLBACK PUT</strong></div>
+                <div><span>Trade Permitido</span><strong>True</strong></div>
+                <div><span>Contratos</span><strong>2</strong></div>
+                <div><span>R/R</span><strong>1.65</strong></div>
+
+                <div><span>Contrato</span><strong>None</strong></div>
+                <div><span>Tipo Opción</span><strong>PUT</strong></div>
+                <div><span>Strike</span><strong>None</strong></div>
+                <div><span>Expiración</span><strong>None</strong></div>
+
+                <div><span>Entrada Opción</span><strong>$None</strong></div>
+                <div><span>Stop Opción</span><strong>$None</strong></div>
+                <div><span>Take Profit Opción</span><strong>$None</strong></div>
+                <div><span>DTE</span><strong>None</strong></div>
+
+                <div><span>Volumen Opción</span><strong>None</strong></div>
+                <div><span>Open Interest</span><strong>None</strong></div>
+                <div><span>Score Contrato</span><strong>None</strong></div>
+                <div><span>Costo Contrato</span><strong>$315.0</strong></div>
+
+                <div><span>Riesgo Real</span><strong>$190.0</strong></div>
+                <div><span>Ganancia Potencial</span><strong>$314.0</strong></div>
+                <div><span>Riesgo Máximo Permitido</span><strong>$200.0</strong></div>
+                <div><span>Riesgo por Contrato</span><strong>$95.0</strong></div>
+            </div>
+
+            <div class="section">
+                <h3>Plan de Trade</h3>
+                <p>Estrategia: WATCHLIST PUT | Contratos: 2 | Entrada opcion: $3.15 | Costo por contrato: $315.0 | Stop loss: $2.2 | Take profit: $4.72 | Riesgo por contrato: $95.0 | Riesgo total: $190.0 | Ganancia potencial: $314.0</p>
+            </div>
+
+            <div class="section">
+                <h3>Razones del Score</h3>
+                <p>Tendencia bajista, MACD alcista, Entrada confirmada, Trade ejecutable, Risk Reward saludable, Tamano de posicion calculado</p>
+            </div>
+
+            <div class="section ai">
+                <h3>Analisis IA</h3>
+                <p>IA pendiente: solo se analiza la mejor oportunidad.</p>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h2>#5 UBER</h2>
+                    <p class="price">$70.12</p>
+                </div>
+                <div class="badge interesting">
+                    67/100<br>INTERESANTE
+                </div>
+            </div>
+
+            <div class="grid">
+                <div><span>Tendencia</span><strong>DOWN</strong></div>
+                <div><span>Señal</span><strong>SELL</strong></div>
+                <div><span>Riesgo</span><strong>MEDIUM</strong></div>
+                <div><span>Entrada Lista</span><strong>True</strong></div>
+
+                <div><span>Tipo Entrada</span><strong>PULLBACK PUT</strong></div>
+                <div><span>Trade Permitido</span><strong>True</strong></div>
+                <div><span>Contratos</span><strong>3</strong></div>
+                <div><span>R/R</span><strong>1.67</strong></div>
+
+                <div><span>Contrato</span><strong>None</strong></div>
+                <div><span>Tipo Opción</span><strong>PUT</strong></div>
+                <div><span>Strike</span><strong>None</strong></div>
+                <div><span>Expiración</span><strong>None</strong></div>
+
+                <div><span>Entrada Opción</span><strong>$None</strong></div>
+                <div><span>Stop Opción</span><strong>$None</strong></div>
+                <div><span>Take Profit Opción</span><strong>$None</strong></div>
+                <div><span>DTE</span><strong>None</strong></div>
+
+                <div><span>Volumen Opción</span><strong>None</strong></div>
+                <div><span>Open Interest</span><strong>None</strong></div>
+                <div><span>Score Contrato</span><strong>None</strong></div>
+                <div><span>Costo Contrato</span><strong>$210.0</strong></div>
+
+                <div><span>Riesgo Real</span><strong>$189.0</strong></div>
+                <div><span>Ganancia Potencial</span><strong>$315.0</strong></div>
+                <div><span>Riesgo Máximo Permitido</span><strong>$200.0</strong></div>
+                <div><span>Riesgo por Contrato</span><strong>$63.0</strong></div>
+            </div>
+
+            <div class="section">
+                <h3>Plan de Trade</h3>
+                <p>Estrategia: WATCHLIST PUT | Contratos: 3 | Entrada opcion: $2.1 | Costo por contrato: $210.0 | Stop loss: $1.47 | Take profit: $3.15 | Riesgo por contrato: $63.0 | Riesgo total: $189.0 | Ganancia potencial: $315.0</p>
+            </div>
+
+            <div class="section">
+                <h3>Razones del Score</h3>
+                <p>Tendencia bajista, Entrada confirmada, Trade ejecutable, Risk Reward saludable, Tamano de posicion calculado</p>
+            </div>
+
+            <div class="section ai">
+                <h3>Analisis IA</h3>
+                <p>IA pendiente: solo se analiza la mejor oportunidad.</p>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h2>#6 COIN</h2>
+                    <p class="price">$180.01</p>
+                </div>
+                <div class="badge interesting">
+                    67/100<br>INTERESANTE
+                </div>
+            </div>
+
+            <div class="grid">
+                <div><span>Tendencia</span><strong>DOWN</strong></div>
+                <div><span>Señal</span><strong>HOLD</strong></div>
+                <div><span>Riesgo</span><strong>MEDIUM</strong></div>
+                <div><span>Entrada Lista</span><strong>True</strong></div>
+
+                <div><span>Tipo Entrada</span><strong>PULLBACK PUT</strong></div>
+                <div><span>Trade Permitido</span><strong>True</strong></div>
+                <div><span>Contratos</span><strong>1</strong></div>
+                <div><span>R/R</span><strong>1.67</strong></div>
+
+                <div><span>Contrato</span><strong>None</strong></div>
+                <div><span>Tipo Opción</span><strong>PUT</strong></div>
+                <div><span>Strike</span><strong>None</strong></div>
+                <div><span>Expiración</span><strong>None</strong></div>
+
+                <div><span>Entrada Opción</span><strong>$None</strong></div>
+                <div><span>Stop Opción</span><strong>$None</strong></div>
+                <div><span>Take Profit Opción</span><strong>$None</strong></div>
+                <div><span>DTE</span><strong>None</strong></div>
+
+                <div><span>Volumen Opción</span><strong>None</strong></div>
+                <div><span>Open Interest</span><strong>None</strong></div>
+                <div><span>Score Contrato</span><strong>None</strong></div>
+                <div><span>Costo Contrato</span><strong>$540.0</strong></div>
+
+                <div><span>Riesgo Real</span><strong>$162.0</strong></div>
+                <div><span>Ganancia Potencial</span><strong>$270.0</strong></div>
+                <div><span>Riesgo Máximo Permitido</span><strong>$200.0</strong></div>
+                <div><span>Riesgo por Contrato</span><strong>$162.0</strong></div>
+            </div>
+
+            <div class="section">
+                <h3>Plan de Trade</h3>
+                <p>Estrategia: WATCHLIST PUT | Contratos: 1 | Entrada opcion: $5.4 | Costo por contrato: $540.0 | Stop loss: $3.78 | Take profit: $8.1 | Riesgo por contrato: $162.0 | Riesgo total: $162.0 | Ganancia potencial: $270.0</p>
+            </div>
+
+            <div class="section">
+                <h3>Razones del Score</h3>
+                <p>Tendencia bajista, Entrada confirmada, Trade ejecutable, Risk Reward saludable, Tamano de posicion calculado</p>
+            </div>
+
+            <div class="section ai">
+                <h3>Analisis IA</h3>
+                <p>IA pendiente: solo se analiza la mejor oportunidad.</p>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h2>#7 MSFT</h2>
+                    <p class="price">$416.03</p>
+                </div>
+                <div class="badge discard">
+                    5/100<br>DESCARTAR
+                </div>
+            </div>
+
+            <div class="grid">
+                <div><span>Tendencia</span><strong>UP</strong></div>
+                <div><span>Señal</span><strong>HOLD</strong></div>
+                <div><span>Riesgo</span><strong>MEDIUM</strong></div>
+                <div><span>Entrada Lista</span><strong>True</strong></div>
+
+                <div><span>Tipo Entrada</span><strong>PULLBACK CALL</strong></div>
+                <div><span>Trade Permitido</span><strong>False</strong></div>
+                <div><span>Contratos</span><strong>0</strong></div>
+                <div><span>R/R</span><strong>0</strong></div>
+
+                <div><span>Contrato</span><strong>None</strong></div>
+                <div><span>Tipo Opción</span><strong>CALL</strong></div>
+                <div><span>Strike</span><strong>None</strong></div>
+                <div><span>Expiración</span><strong>None</strong></div>
+
+                <div><span>Entrada Opción</span><strong>$None</strong></div>
+                <div><span>Stop Opción</span><strong>$None</strong></div>
+                <div><span>Take Profit Opción</span><strong>$None</strong></div>
+                <div><span>DTE</span><strong>None</strong></div>
+
+                <div><span>Volumen Opción</span><strong>None</strong></div>
+                <div><span>Open Interest</span><strong>None</strong></div>
+                <div><span>Score Contrato</span><strong>None</strong></div>
+                <div><span>Costo Contrato</span><strong>$1248.0</strong></div>
+
+                <div><span>Riesgo Real</span><strong>$0</strong></div>
+                <div><span>Ganancia Potencial</span><strong>$0</strong></div>
+                <div><span>Riesgo Máximo Permitido</span><strong>$200.0</strong></div>
+                <div><span>Riesgo por Contrato</span><strong>$374.0</strong></div>
+            </div>
+
+            <div class="section">
+                <h3>Plan de Trade</h3>
+                <p>Trade bloqueado: riesgo por contrato $374.0 mayor al limite con tolerancia $230.0.</p>
+            </div>
+
+            <div class="section">
+                <h3>Razones del Score</h3>
+                <p>Tendencia alcista, RSI optimo, Entrada confirmada, Trade no ejecutable</p>
+            </div>
+
+            <div class="section ai">
+                <h3>Analisis IA</h3>
+                <p>IA pendiente: solo se analiza la mejor oportunidad.</p>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h2>#8 TSLA</h2>
+                    <p class="price">$433.59</p>
+                </div>
+                <div class="badge discard">
+                    5/100<br>DESCARTAR
+                </div>
+            </div>
+
+            <div class="grid">
+                <div><span>Tendencia</span><strong>UP</strong></div>
+                <div><span>Señal</span><strong>HOLD</strong></div>
+                <div><span>Riesgo</span><strong>MEDIUM</strong></div>
+                <div><span>Entrada Lista</span><strong>True</strong></div>
+
+                <div><span>Tipo Entrada</span><strong>PULLBACK CALL</strong></div>
+                <div><span>Trade Permitido</span><strong>False</strong></div>
+                <div><span>Contratos</span><strong>0</strong></div>
+                <div><span>R/R</span><strong>0</strong></div>
+
+                <div><span>Contrato</span><strong>None</strong></div>
+                <div><span>Tipo Opción</span><strong>CALL</strong></div>
+                <div><span>Strike</span><strong>None</strong></div>
+                <div><span>Expiración</span><strong>None</strong></div>
+
+                <div><span>Entrada Opción</span><strong>$None</strong></div>
+                <div><span>Stop Opción</span><strong>$None</strong></div>
+                <div><span>Take Profit Opción</span><strong>$None</strong></div>
+                <div><span>DTE</span><strong>None</strong></div>
+
+                <div><span>Volumen Opción</span><strong>None</strong></div>
+                <div><span>Open Interest</span><strong>None</strong></div>
+                <div><span>Score Contrato</span><strong>None</strong></div>
+                <div><span>Costo Contrato</span><strong>$1301.0</strong></div>
+
+                <div><span>Riesgo Real</span><strong>$0</strong></div>
+                <div><span>Ganancia Potencial</span><strong>$0</strong></div>
+                <div><span>Riesgo Máximo Permitido</span><strong>$200.0</strong></div>
+                <div><span>Riesgo por Contrato</span><strong>$390.0</strong></div>
+            </div>
+
+            <div class="section">
+                <h3>Plan de Trade</h3>
+                <p>Trade bloqueado: riesgo por contrato $390.0 mayor al limite con tolerancia $230.0.</p>
+            </div>
+
+            <div class="section">
+                <h3>Razones del Score</h3>
+                <p>Tendencia alcista, RSI optimo, Entrada confirmada, Trade no ejecutable</p>
+            </div>
+
+            <div class="section ai">
+                <h3>Analisis IA</h3>
+                <p>IA pendiente: solo se analiza la mejor oportunidad.</p>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h2>#9 GOOGL</h2>
+                    <p class="price">$388.88</p>
+                </div>
+                <div class="badge discard">
+                    5/100<br>DESCARTAR
+                </div>
+            </div>
+
+            <div class="grid">
+                <div><span>Tendencia</span><strong>UP</strong></div>
+                <div><span>Señal</span><strong>HOLD</strong></div>
+                <div><span>Riesgo</span><strong>MEDIUM</strong></div>
+                <div><span>Entrada Lista</span><strong>True</strong></div>
+
+                <div><span>Tipo Entrada</span><strong>PULLBACK CALL</strong></div>
+                <div><span>Trade Permitido</span><strong>False</strong></div>
+                <div><span>Contratos</span><strong>0</strong></div>
+                <div><span>R/R</span><strong>0</strong></div>
+
+                <div><span>Contrato</span><strong>None</strong></div>
+                <div><span>Tipo Opción</span><strong>CALL</strong></div>
+                <div><span>Strike</span><strong>None</strong></div>
+                <div><span>Expiración</span><strong>None</strong></div>
+
+                <div><span>Entrada Opción</span><strong>$None</strong></div>
+                <div><span>Stop Opción</span><strong>$None</strong></div>
+                <div><span>Take Profit Opción</span><strong>$None</strong></div>
+                <div><span>DTE</span><strong>None</strong></div>
+
+                <div><span>Volumen Opción</span><strong>None</strong></div>
+                <div><span>Open Interest</span><strong>None</strong></div>
+                <div><span>Score Contrato</span><strong>None</strong></div>
+                <div><span>Costo Contrato</span><strong>$1167.0</strong></div>
+
+                <div><span>Riesgo Real</span><strong>$0</strong></div>
+                <div><span>Ganancia Potencial</span><strong>$0</strong></div>
+                <div><span>Riesgo Máximo Permitido</span><strong>$200.0</strong></div>
+                <div><span>Riesgo por Contrato</span><strong>$350.0</strong></div>
+            </div>
+
+            <div class="section">
+                <h3>Plan de Trade</h3>
+                <p>Trade bloqueado: riesgo por contrato $350.0 mayor al limite con tolerancia $230.0.</p>
+            </div>
+
+            <div class="section">
+                <h3>Razones del Score</h3>
+                <p>Tendencia alcista, RSI optimo, Entrada confirmada, Trade no ejecutable</p>
+            </div>
+
+            <div class="section ai">
+                <h3>Analisis IA</h3>
+                <p>IA pendiente: solo se analiza la mejor oportunidad.</p>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h2>#10 IWM</h2>
+                    <p class="price">$290.51</p>
+                </div>
+                <div class="badge discard">
+                    5/100<br>DESCARTAR
+                </div>
+            </div>
+
+            <div class="grid">
+                <div><span>Tendencia</span><strong>UP</strong></div>
+                <div><span>Señal</span><strong>HOLD</strong></div>
+                <div><span>Riesgo</span><strong>MEDIUM</strong></div>
+                <div><span>Entrada Lista</span><strong>True</strong></div>
+
+                <div><span>Tipo Entrada</span><strong>PULLBACK CALL</strong></div>
+                <div><span>Trade Permitido</span><strong>False</strong></div>
+                <div><span>Contratos</span><strong>0</strong></div>
+                <div><span>R/R</span><strong>0</strong></div>
+
+                <div><span>Contrato</span><strong>None</strong></div>
+                <div><span>Tipo Opción</span><strong>CALL</strong></div>
+                <div><span>Strike</span><strong>None</strong></div>
+                <div><span>Expiración</span><strong>None</strong></div>
+
+                <div><span>Entrada Opción</span><strong>$None</strong></div>
+                <div><span>Stop Opción</span><strong>$None</strong></div>
+                <div><span>Take Profit Opción</span><strong>$None</strong></div>
+                <div><span>DTE</span><strong>None</strong></div>
+
+                <div><span>Volumen Opción</span><strong>None</strong></div>
+                <div><span>Open Interest</span><strong>None</strong></div>
+                <div><span>Score Contrato</span><strong>None</strong></div>
+                <div><span>Costo Contrato</span><strong>$872.0</strong></div>
+
+                <div><span>Riesgo Real</span><strong>$0</strong></div>
+                <div><span>Ganancia Potencial</span><strong>$0</strong></div>
+                <div><span>Riesgo Máximo Permitido</span><strong>$200.0</strong></div>
+                <div><span>Riesgo por Contrato</span><strong>$262.0</strong></div>
+            </div>
+
+            <div class="section">
+                <h3>Plan de Trade</h3>
+                <p>Trade bloqueado: riesgo por contrato $262.0 mayor al limite con tolerancia $230.0.</p>
+            </div>
+
+            <div class="section">
+                <h3>Razones del Score</h3>
+                <p>Tendencia alcista, RSI optimo, Entrada confirmada, Trade no ejecutable</p>
+            </div>
+
+            <div class="section ai">
+                <h3>Analisis IA</h3>
+                <p>IA pendiente: solo se analiza la mejor oportunidad.</p>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h2>#11 AAPL</h2>
+                    <p class="price">$308.33</p>
+                </div>
+                <div class="badge discard">
+                    0/100<br>DESCARTAR
+                </div>
+            </div>
+
+            <div class="grid">
+                <div><span>Tendencia</span><strong>UP</strong></div>
+                <div><span>Señal</span><strong>HOLD</strong></div>
+                <div><span>Riesgo</span><strong>MEDIUM</strong></div>
+                <div><span>Entrada Lista</span><strong>False</strong></div>
+
+                <div><span>Tipo Entrada</span><strong>NONE</strong></div>
+                <div><span>Trade Permitido</span><strong>False</strong></div>
+                <div><span>Contratos</span><strong>0</strong></div>
+                <div><span>R/R</span><strong>0</strong></div>
+
+                <div><span>Contrato</span><strong>None</strong></div>
+                <div><span>Tipo Opción</span><strong>CALL</strong></div>
+                <div><span>Strike</span><strong>None</strong></div>
+                <div><span>Expiración</span><strong>None</strong></div>
+
+                <div><span>Entrada Opción</span><strong>$None</strong></div>
+                <div><span>Stop Opción</span><strong>$None</strong></div>
+                <div><span>Take Profit Opción</span><strong>$None</strong></div>
+                <div><span>DTE</span><strong>None</strong></div>
+
+                <div><span>Volumen Opción</span><strong>None</strong></div>
+                <div><span>Open Interest</span><strong>None</strong></div>
+                <div><span>Score Contrato</span><strong>None</strong></div>
+                <div><span>Costo Contrato</span><strong>$None</strong></div>
+
+                <div><span>Riesgo Real</span><strong>$0</strong></div>
+                <div><span>Ganancia Potencial</span><strong>$0</strong></div>
+                <div><span>Riesgo Máximo Permitido</span><strong>$200.0</strong></div>
+                <div><span>Riesgo por Contrato</span><strong>$None</strong></div>
+            </div>
+
+            <div class="section">
+                <h3>Plan de Trade</h3>
+                <p>No hay plan activo: entrada no confirmada.</p>
+            </div>
+
+            <div class="section">
+                <h3>Razones del Score</h3>
+                <p>Tendencia alcista, RSI sobrecomprado, MACD alcista, Entrada no confirmada, Trade no ejecutable</p>
+            </div>
+
+            <div class="section ai">
+                <h3>Analisis IA</h3>
+                <p>IA pendiente: solo se analiza la mejor oportunidad.</p>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h2>#12 META</h2>
+                    <p class="price">$612.34</p>
+                </div>
+                <div class="badge discard">
+                    0/100<br>DESCARTAR
+                </div>
+            </div>
+
+            <div class="grid">
+                <div><span>Tendencia</span><strong>DOWN</strong></div>
+                <div><span>Señal</span><strong>HOLD</strong></div>
+                <div><span>Riesgo</span><strong>MEDIUM</strong></div>
+                <div><span>Entrada Lista</span><strong>True</strong></div>
+
+                <div><span>Tipo Entrada</span><strong>PULLBACK PUT</strong></div>
+                <div><span>Trade Permitido</span><strong>False</strong></div>
+                <div><span>Contratos</span><strong>0</strong></div>
+                <div><span>R/R</span><strong>0</strong></div>
+
+                <div><span>Contrato</span><strong>None</strong></div>
+                <div><span>Tipo Opción</span><strong>PUT</strong></div>
+                <div><span>Strike</span><strong>None</strong></div>
+                <div><span>Expiración</span><strong>None</strong></div>
+
+                <div><span>Entrada Opción</span><strong>$None</strong></div>
+                <div><span>Stop Opción</span><strong>$None</strong></div>
+                <div><span>Take Profit Opción</span><strong>$None</strong></div>
+                <div><span>DTE</span><strong>None</strong></div>
+
+                <div><span>Volumen Opción</span><strong>None</strong></div>
+                <div><span>Open Interest</span><strong>None</strong></div>
+                <div><span>Score Contrato</span><strong>None</strong></div>
+                <div><span>Costo Contrato</span><strong>$1837.0</strong></div>
+
+                <div><span>Riesgo Real</span><strong>$0</strong></div>
+                <div><span>Ganancia Potencial</span><strong>$0</strong></div>
+                <div><span>Riesgo Máximo Permitido</span><strong>$200.0</strong></div>
+                <div><span>Riesgo por Contrato</span><strong>$551.0</strong></div>
+            </div>
+
+            <div class="section">
+                <h3>Plan de Trade</h3>
+                <p>Trade bloqueado: riesgo por contrato $551.0 mayor al limite con tolerancia $230.0.</p>
+            </div>
+
+            <div class="section">
+                <h3>Razones del Score</h3>
+                <p>Tendencia bajista, RSI optimo, Entrada confirmada, Trade no ejecutable</p>
+            </div>
+
+            <div class="section ai">
+                <h3>Analisis IA</h3>
+                <p>IA pendiente: solo se analiza la mejor oportunidad.</p>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h2>#13 AMZN</h2>
+                    <p class="price">$265.29</p>
+                </div>
+                <div class="badge discard">
+                    0/100<br>DESCARTAR
+                </div>
+            </div>
+
+            <div class="grid">
+                <div><span>Tendencia</span><strong>UP</strong></div>
+                <div><span>Señal</span><strong>HOLD</strong></div>
+                <div><span>Riesgo</span><strong>MEDIUM</strong></div>
+                <div><span>Entrada Lista</span><strong>False</strong></div>
+
+                <div><span>Tipo Entrada</span><strong>NONE</strong></div>
+                <div><span>Trade Permitido</span><strong>False</strong></div>
+                <div><span>Contratos</span><strong>0</strong></div>
+                <div><span>R/R</span><strong>0</strong></div>
+
+                <div><span>Contrato</span><strong>None</strong></div>
+                <div><span>Tipo Opción</span><strong>CALL</strong></div>
+                <div><span>Strike</span><strong>None</strong></div>
+                <div><span>Expiración</span><strong>None</strong></div>
+
+                <div><span>Entrada Opción</span><strong>$None</strong></div>
+                <div><span>Stop Opción</span><strong>$None</strong></div>
+                <div><span>Take Profit Opción</span><strong>$None</strong></div>
+                <div><span>DTE</span><strong>None</strong></div>
+
+                <div><span>Volumen Opción</span><strong>None</strong></div>
+                <div><span>Open Interest</span><strong>None</strong></div>
+                <div><span>Score Contrato</span><strong>None</strong></div>
+                <div><span>Costo Contrato</span><strong>$None</strong></div>
+
+                <div><span>Riesgo Real</span><strong>$0</strong></div>
+                <div><span>Ganancia Potencial</span><strong>$0</strong></div>
+                <div><span>Riesgo Máximo Permitido</span><strong>$200.0</strong></div>
+                <div><span>Riesgo por Contrato</span><strong>$None</strong></div>
+            </div>
+
+            <div class="section">
+                <h3>Plan de Trade</h3>
+                <p>No hay plan activo: entrada no confirmada.</p>
+            </div>
+
+            <div class="section">
+                <h3>Razones del Score</h3>
+                <p>Tendencia alcista, Entrada no confirmada, Trade no ejecutable</p>
+            </div>
+
+            <div class="section ai">
+                <h3>Analisis IA</h3>
+                <p>IA pendiente: solo se analiza la mejor oportunidad.</p>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h2>#14 AMD</h2>
+                    <p class="price">$503.89</p>
+                </div>
+                <div class="badge discard">
+                    0/100<br>DESCARTAR
+                </div>
+            </div>
+
+            <div class="grid">
+                <div><span>Tendencia</span><strong>UP</strong></div>
+                <div><span>Señal</span><strong>HOLD</strong></div>
+                <div><span>Riesgo</span><strong>MEDIUM</strong></div>
+                <div><span>Entrada Lista</span><strong>False</strong></div>
+
+                <div><span>Tipo Entrada</span><strong>NONE</strong></div>
+                <div><span>Trade Permitido</span><strong>False</strong></div>
+                <div><span>Contratos</span><strong>0</strong></div>
+                <div><span>R/R</span><strong>0</strong></div>
+
+                <div><span>Contrato</span><strong>None</strong></div>
+                <div><span>Tipo Opción</span><strong>CALL</strong></div>
+                <div><span>Strike</span><strong>None</strong></div>
+                <div><span>Expiración</span><strong>None</strong></div>
+
+                <div><span>Entrada Opción</span><strong>$None</strong></div>
+                <div><span>Stop Opción</span><strong>$None</strong></div>
+                <div><span>Take Profit Opción</span><strong>$None</strong></div>
+                <div><span>DTE</span><strong>None</strong></div>
+
+                <div><span>Volumen Opción</span><strong>None</strong></div>
+                <div><span>Open Interest</span><strong>None</strong></div>
+                <div><span>Score Contrato</span><strong>None</strong></div>
+                <div><span>Costo Contrato</span><strong>$None</strong></div>
+
+                <div><span>Riesgo Real</span><strong>$0</strong></div>
+                <div><span>Ganancia Potencial</span><strong>$0</strong></div>
+                <div><span>Riesgo Máximo Permitido</span><strong>$200.0</strong></div>
+                <div><span>Riesgo por Contrato</span><strong>$None</strong></div>
+            </div>
+
+            <div class="section">
+                <h3>Plan de Trade</h3>
+                <p>No hay plan activo: entrada no confirmada.</p>
+            </div>
+
+            <div class="section">
+                <h3>Razones del Score</h3>
+                <p>Tendencia alcista, MACD alcista, Entrada no confirmada, Trade no ejecutable</p>
+            </div>
+
+            <div class="section ai">
+                <h3>Analisis IA</h3>
+                <p>IA pendiente: solo se analiza la mejor oportunidad.</p>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h2>#15 AVGO</h2>
+                    <p class="price">$422.01</p>
+                </div>
+                <div class="badge discard">
+                    0/100<br>DESCARTAR
+                </div>
+            </div>
+
+            <div class="grid">
+                <div><span>Tendencia</span><strong>UP</strong></div>
+                <div><span>Señal</span><strong>HOLD</strong></div>
+                <div><span>Riesgo</span><strong>MEDIUM</strong></div>
+                <div><span>Entrada Lista</span><strong>True</strong></div>
+
+                <div><span>Tipo Entrada</span><strong>PULLBACK CALL</strong></div>
+                <div><span>Trade Permitido</span><strong>False</strong></div>
+                <div><span>Contratos</span><strong>0</strong></div>
+                <div><span>R/R</span><strong>0</strong></div>
+
+                <div><span>Contrato</span><strong>None</strong></div>
+                <div><span>Tipo Opción</span><strong>CALL</strong></div>
+                <div><span>Strike</span><strong>None</strong></div>
+                <div><span>Expiración</span><strong>None</strong></div>
+
+                <div><span>Entrada Opción</span><strong>$None</strong></div>
+                <div><span>Stop Opción</span><strong>$None</strong></div>
+                <div><span>Take Profit Opción</span><strong>$None</strong></div>
+                <div><span>DTE</span><strong>None</strong></div>
+
+                <div><span>Volumen Opción</span><strong>None</strong></div>
+                <div><span>Open Interest</span><strong>None</strong></div>
+                <div><span>Score Contrato</span><strong>None</strong></div>
+                <div><span>Costo Contrato</span><strong>$1266.0</strong></div>
+
+                <div><span>Riesgo Real</span><strong>$0</strong></div>
+                <div><span>Ganancia Potencial</span><strong>$0</strong></div>
+                <div><span>Riesgo Máximo Permitido</span><strong>$200.0</strong></div>
+                <div><span>Riesgo por Contrato</span><strong>$380.0</strong></div>
+            </div>
+
+            <div class="section">
+                <h3>Plan de Trade</h3>
+                <p>Trade bloqueado: riesgo por contrato $380.0 mayor al limite con tolerancia $230.0.</p>
+            </div>
+
+            <div class="section">
+                <h3>Razones del Score</h3>
+                <p>Tendencia alcista, Entrada confirmada, Trade no ejecutable</p>
+            </div>
+
+            <div class="section ai">
+                <h3>Analisis IA</h3>
+                <p>IA pendiente: solo se analiza la mejor oportunidad.</p>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h2>#16 CRM</h2>
+                    <p class="price">$179.08</p>
+                </div>
+                <div class="badge discard">
+                    0/100<br>DESCARTAR
+                </div>
+            </div>
+
+            <div class="grid">
+                <div><span>Tendencia</span><strong>DOWN</strong></div>
+                <div><span>Señal</span><strong>HOLD</strong></div>
+                <div><span>Riesgo</span><strong>MEDIUM</strong></div>
+                <div><span>Entrada Lista</span><strong>False</strong></div>
+
+                <div><span>Tipo Entrada</span><strong>NONE</strong></div>
+                <div><span>Trade Permitido</span><strong>False</strong></div>
+                <div><span>Contratos</span><strong>0</strong></div>
+                <div><span>R/R</span><strong>0</strong></div>
+
+                <div><span>Contrato</span><strong>None</strong></div>
+                <div><span>Tipo Opción</span><strong>PUT</strong></div>
+                <div><span>Strike</span><strong>None</strong></div>
+                <div><span>Expiración</span><strong>None</strong></div>
+
+                <div><span>Entrada Opción</span><strong>$None</strong></div>
+                <div><span>Stop Opción</span><strong>$None</strong></div>
+                <div><span>Take Profit Opción</span><strong>$None</strong></div>
+                <div><span>DTE</span><strong>None</strong></div>
+
+                <div><span>Volumen Opción</span><strong>None</strong></div>
+                <div><span>Open Interest</span><strong>None</strong></div>
+                <div><span>Score Contrato</span><strong>None</strong></div>
+                <div><span>Costo Contrato</span><strong>$None</strong></div>
+
+                <div><span>Riesgo Real</span><strong>$0</strong></div>
+                <div><span>Ganancia Potencial</span><strong>$0</strong></div>
+                <div><span>Riesgo Máximo Permitido</span><strong>$200.0</strong></div>
+                <div><span>Riesgo por Contrato</span><strong>$None</strong></div>
+            </div>
+
+            <div class="section">
+                <h3>Plan de Trade</h3>
+                <p>No hay plan activo: entrada no confirmada.</p>
+            </div>
+
+            <div class="section">
+                <h3>Razones del Score</h3>
+                <p>Tendencia bajista, MACD alcista, Entrada no confirmada, Trade no ejecutable</p>
+            </div>
+
+            <div class="section ai">
+                <h3>Analisis IA</h3>
+                <p>IA pendiente: solo se analiza la mejor oportunidad.</p>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h2>#17 SNOW</h2>
+                    <p class="price">$177.6</p>
+                </div>
+                <div class="badge discard">
+                    0/100<br>DESCARTAR
+                </div>
+            </div>
+
+            <div class="grid">
+                <div><span>Tendencia</span><strong>UP</strong></div>
+                <div><span>Señal</span><strong>BUY</strong></div>
+                <div><span>Riesgo</span><strong>MEDIUM</strong></div>
+                <div><span>Entrada Lista</span><strong>False</strong></div>
+
+                <div><span>Tipo Entrada</span><strong>NONE</strong></div>
+                <div><span>Trade Permitido</span><strong>False</strong></div>
+                <div><span>Contratos</span><strong>0</strong></div>
+                <div><span>R/R</span><strong>0</strong></div>
+
+                <div><span>Contrato</span><strong>None</strong></div>
+                <div><span>Tipo Opción</span><strong>CALL</strong></div>
+                <div><span>Strike</span><strong>None</strong></div>
+                <div><span>Expiración</span><strong>None</strong></div>
+
+                <div><span>Entrada Opción</span><strong>$None</strong></div>
+                <div><span>Stop Opción</span><strong>$None</strong></div>
+                <div><span>Take Profit Opción</span><strong>$None</strong></div>
+                <div><span>DTE</span><strong>None</strong></div>
+
+                <div><span>Volumen Opción</span><strong>None</strong></div>
+                <div><span>Open Interest</span><strong>None</strong></div>
+                <div><span>Score Contrato</span><strong>None</strong></div>
+                <div><span>Costo Contrato</span><strong>$None</strong></div>
+
+                <div><span>Riesgo Real</span><strong>$0</strong></div>
+                <div><span>Ganancia Potencial</span><strong>$0</strong></div>
+                <div><span>Riesgo Máximo Permitido</span><strong>$200.0</strong></div>
+                <div><span>Riesgo por Contrato</span><strong>$None</strong></div>
+            </div>
+
+            <div class="section">
+                <h3>Plan de Trade</h3>
+                <p>No hay plan activo: entrada no confirmada.</p>
+            </div>
+
+            <div class="section">
+                <h3>Razones del Score</h3>
+                <p>Tendencia alcista, RSI sobrecomprado, MACD alcista, Entrada no confirmada, Trade no ejecutable</p>
+            </div>
+
+            <div class="section ai">
+                <h3>Analisis IA</h3>
+                <p>IA pendiente: solo se analiza la mejor oportunidad.</p>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h2>#18 QQQ</h2>
+                    <p class="price">$730.28</p>
+                </div>
+                <div class="badge discard">
+                    0/100<br>DESCARTAR
+                </div>
+            </div>
+
+            <div class="grid">
+                <div><span>Tendencia</span><strong>UP</strong></div>
+                <div><span>Señal</span><strong>HOLD</strong></div>
+                <div><span>Riesgo</span><strong>MEDIUM</strong></div>
+                <div><span>Entrada Lista</span><strong>False</strong></div>
+
+                <div><span>Tipo Entrada</span><strong>NONE</strong></div>
+                <div><span>Trade Permitido</span><strong>False</strong></div>
+                <div><span>Contratos</span><strong>0</strong></div>
+                <div><span>R/R</span><strong>0</strong></div>
+
+                <div><span>Contrato</span><strong>None</strong></div>
+                <div><span>Tipo Opción</span><strong>CALL</strong></div>
+                <div><span>Strike</span><strong>None</strong></div>
+                <div><span>Expiración</span><strong>None</strong></div>
+
+                <div><span>Entrada Opción</span><strong>$None</strong></div>
+                <div><span>Stop Opción</span><strong>$None</strong></div>
+                <div><span>Take Profit Opción</span><strong>$None</strong></div>
+                <div><span>DTE</span><strong>None</strong></div>
+
+                <div><span>Volumen Opción</span><strong>None</strong></div>
+                <div><span>Open Interest</span><strong>None</strong></div>
+                <div><span>Score Contrato</span><strong>None</strong></div>
+                <div><span>Costo Contrato</span><strong>$None</strong></div>
+
+                <div><span>Riesgo Real</span><strong>$0</strong></div>
+                <div><span>Ganancia Potencial</span><strong>$0</strong></div>
+                <div><span>Riesgo Máximo Permitido</span><strong>$200.0</strong></div>
+                <div><span>Riesgo por Contrato</span><strong>$None</strong></div>
+            </div>
+
+            <div class="section">
+                <h3>Plan de Trade</h3>
+                <p>No hay plan activo: entrada no confirmada.</p>
+            </div>
+
+            <div class="section">
+                <h3>Razones del Score</h3>
+                <p>Tendencia alcista, Entrada no confirmada, Trade no ejecutable</p>
+            </div>
+
+            <div class="section ai">
+                <h3>Analisis IA</h3>
+                <p>IA pendiente: solo se analiza la mejor oportunidad.</p>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h2>#19 SPY</h2>
+                    <p class="price">$750.59</p>
+                </div>
+                <div class="badge discard">
+                    0/100<br>DESCARTAR
+                </div>
+            </div>
+
+            <div class="grid">
+                <div><span>Tendencia</span><strong>UP</strong></div>
+                <div><span>Señal</span><strong>HOLD</strong></div>
+                <div><span>Riesgo</span><strong>MEDIUM</strong></div>
+                <div><span>Entrada Lista</span><strong>False</strong></div>
+
+                <div><span>Tipo Entrada</span><strong>NONE</strong></div>
+                <div><span>Trade Permitido</span><strong>False</strong></div>
+                <div><span>Contratos</span><strong>0</strong></div>
+                <div><span>R/R</span><strong>0</strong></div>
+
+                <div><span>Contrato</span><strong>None</strong></div>
+                <div><span>Tipo Opción</span><strong>CALL</strong></div>
+                <div><span>Strike</span><strong>None</strong></div>
+                <div><span>Expiración</span><strong>None</strong></div>
+
+                <div><span>Entrada Opción</span><strong>$None</strong></div>
+                <div><span>Stop Opción</span><strong>$None</strong></div>
+                <div><span>Take Profit Opción</span><strong>$None</strong></div>
+                <div><span>DTE</span><strong>None</strong></div>
+
+                <div><span>Volumen Opción</span><strong>None</strong></div>
+                <div><span>Open Interest</span><strong>None</strong></div>
+                <div><span>Score Contrato</span><strong>None</strong></div>
+                <div><span>Costo Contrato</span><strong>$None</strong></div>
+
+                <div><span>Riesgo Real</span><strong>$0</strong></div>
+                <div><span>Ganancia Potencial</span><strong>$0</strong></div>
+                <div><span>Riesgo Máximo Permitido</span><strong>$200.0</strong></div>
+                <div><span>Riesgo por Contrato</span><strong>$None</strong></div>
+            </div>
+
+            <div class="section">
+                <h3>Plan de Trade</h3>
+                <p>No hay plan activo: entrada no confirmada.</p>
+            </div>
+
+            <div class="section">
+                <h3>Razones del Score</h3>
+                <p>Tendencia alcista, Entrada no confirmada, Trade no ejecutable</p>
+            </div>
+
+            <div class="section ai">
+                <h3>Analisis IA</h3>
+                <p>IA pendiente: solo se analiza la mejor oportunidad.</p>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h2>#20 SMH</h2>
+                    <p class="price">$602.14</p>
+                </div>
+                <div class="badge discard">
+                    0/100<br>DESCARTAR
+                </div>
+            </div>
+
+            <div class="grid">
+                <div><span>Tendencia</span><strong>UP</strong></div>
+                <div><span>Señal</span><strong>HOLD</strong></div>
+                <div><span>Riesgo</span><strong>MEDIUM</strong></div>
+                <div><span>Entrada Lista</span><strong>False</strong></div>
+
+                <div><span>Tipo Entrada</span><strong>NONE</strong></div>
+                <div><span>Trade Permitido</span><strong>False</strong></div>
+                <div><span>Contratos</span><strong>0</strong></div>
+                <div><span>R/R</span><strong>0</strong></div>
+
+                <div><span>Contrato</span><strong>None</strong></div>
+                <div><span>Tipo Opción</span><strong>CALL</strong></div>
+                <div><span>Strike</span><strong>None</strong></div>
+                <div><span>Expiración</span><strong>None</strong></div>
+
+                <div><span>Entrada Opción</span><strong>$None</strong></div>
+                <div><span>Stop Opción</span><strong>$None</strong></div>
+                <div><span>Take Profit Opción</span><strong>$None</strong></div>
+                <div><span>DTE</span><strong>None</strong></div>
+
+                <div><span>Volumen Opción</span><strong>None</strong></div>
+                <div><span>Open Interest</span><strong>None</strong></div>
+                <div><span>Score Contrato</span><strong>None</strong></div>
+                <div><span>Costo Contrato</span><strong>$None</strong></div>
+
+                <div><span>Riesgo Real</span><strong>$0</strong></div>
+                <div><span>Ganancia Potencial</span><strong>$0</strong></div>
+                <div><span>Riesgo Máximo Permitido</span><strong>$200.0</strong></div>
+                <div><span>Riesgo por Contrato</span><strong>$None</strong></div>
+            </div>
+
+            <div class="section">
+                <h3>Plan de Trade</h3>
+                <p>No hay plan activo: entrada no confirmada.</p>
+            </div>
+
+            <div class="section">
+                <h3>Razones del Score</h3>
+                <p>Tendencia alcista, Entrada no confirmada, Trade no ejecutable</p>
+            </div>
+
+            <div class="section ai">
+                <h3>Analisis IA</h3>
+                <p>IA pendiente: solo se analiza la mejor oportunidad.</p>
+            </div>
+        </div>
+        
+</body>
+</html>
