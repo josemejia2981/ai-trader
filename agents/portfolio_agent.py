@@ -6,6 +6,11 @@ from datetime import datetime
 
 MAX_POSITIONS = 4
 MAX_TOTAL_RISK = 600
+
+MIN_DELTA = 0.70
+MIN_SCORE = 75
+MIN_RISK_REWARD = 2.00
+
 REPORTS_DIR = Path("reports")
 
 
@@ -44,26 +49,48 @@ def get_contract_symbol(trade):
 
 def portfolio_agent(results):
     print("\nSTEP 9 PORTFOLIO")
-    print("Construyendo cartera diaria...")
+    print("Construyendo cartera institucional...")
 
     REPORTS_DIR.mkdir(exist_ok=True)
 
     valid_trades = []
+
+    allowed_ratings = [
+        "BUY STRONG",
+        "FUERTE",
+        "STRONG",
+        "INTERESANTE"
+    ]
 
     for trade in results:
         if not isinstance(trade, dict):
             continue
 
         score = safe_float(trade.get("score"))
+        delta = abs(safe_float(trade.get("delta")))
         risk_amount = safe_float(trade.get("risk_amount"))
         potential_profit = safe_float(trade.get("potential_profit"))
+        risk_reward = safe_float(trade.get("risk_reward"))
+
         contracts = safe_int(trade.get("contracts"), 1)
+
         trade_allowed = trade.get("trade_allowed")
         entry_ready = trade.get("entry_ready")
 
+        rating = str(trade.get("rating", "")).upper().strip()
+
         contract_symbol = get_contract_symbol(trade)
 
-        if score <= 0:
+        if score < MIN_SCORE:
+            continue
+
+        if delta < MIN_DELTA:
+            continue
+
+        if risk_reward < MIN_RISK_REWARD:
+            continue
+
+        if rating not in allowed_ratings:
             continue
 
         if risk_amount <= 0:
@@ -90,13 +117,20 @@ def portfolio_agent(results):
 
     valid_trades = sorted(
         valid_trades,
-        key=lambda x: safe_float(x.get("score")),
+        key=lambda x: (
+            safe_float(x.get("score")),
+            abs(safe_float(x.get("delta"))),
+            safe_float(x.get("risk_reward")),
+            safe_float(x.get("contract_quality_score"))
+        ),
         reverse=True
     )
 
     portfolio = []
+
     total_risk = 0
     total_profit = 0
+
     call_count = 0
     put_count = 0
 
@@ -106,12 +140,14 @@ def portfolio_agent(results):
 
         risk_amount = safe_float(trade.get("risk_amount"))
         potential_profit = safe_float(trade.get("potential_profit"))
+
         option_type = trade.get("option_type")
 
         if total_risk + risk_amount > MAX_TOTAL_RISK:
             continue
 
         portfolio.append(trade)
+
         total_risk += risk_amount
         total_profit += potential_profit
 
@@ -130,16 +166,17 @@ def portfolio_agent(results):
         "symbols": [p.get("symbol") for p in portfolio],
     }
 
-    print("\nTOP PORTFOLIO DEL DIA")
+    print("\nTOP PORTFOLIO INSTITUCIONAL")
 
     if not portfolio:
-        print("No hay trades ejecutables para cartera.")
+        print("No hay trades institucionales válidos.")
     else:
         for i, trade in enumerate(portfolio, start=1):
             print("--------------------------------")
             print(f"#{i} {trade.get('symbol')}")
             print(f"Contrato: {trade.get('contractSymbol')}")
             print(f"Tipo: {trade.get('option_type')}")
+            print(f"Delta: {trade.get('delta')}")
             print(f"Contratos: {trade.get('contracts')}")
             print(f"Entrada: {trade.get('entry_price')}")
             print(f"Stop Loss: {trade.get('stop_loss')}")
@@ -165,6 +202,7 @@ def portfolio_agent(results):
                 "symbol": trade.get("symbol"),
                 "contractSymbol": trade.get("contractSymbol"),
                 "option_type": trade.get("option_type"),
+                "delta": trade.get("delta"),
                 "contracts": trade.get("contracts"),
                 "entry_price": trade.get("entry_price"),
                 "stop_loss": trade.get("stop_loss"),
@@ -184,7 +222,15 @@ def portfolio_agent(results):
                 "spread_pct": trade.get("spread_pct"),
                 "volume": trade.get("volume"),
                 "openInterest": trade.get("openInterest"),
+                "underlying_price": trade.get("underlying_price"),
                 "contract_quality_score": trade.get("contract_quality_score"),
+                "liquidity_score": trade.get("liquidity_score"),
+                "spread_score": trade.get("spread_score"),
+                "dte_score": trade.get("dte_score"),
+                "moneyness_score": trade.get("moneyness_score"),
+                "delta_score": trade.get("delta_score"),
+                "price_score": trade.get("price_score"),
+                "risk_score": trade.get("risk_score"),
             })
 
         df = pd.DataFrame(portfolio_rows)

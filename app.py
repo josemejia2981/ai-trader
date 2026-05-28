@@ -7,6 +7,8 @@ from pathlib import Path
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
+from agents.equity_curve_agent import equity_curve_agent
+
 st.set_page_config(
     page_title="AI TRADER | Executive Dashboard",
     page_icon="📊",
@@ -92,6 +94,13 @@ def number(value):
         return "0.00"
 
 
+def percent(value):
+    try:
+        return f"{float(value):,.2f}%"
+    except Exception:
+        return "0.00%"
+
+
 def recommendation_from_score(score):
     score = to_float(score)
     if score >= 90:
@@ -100,20 +109,6 @@ def recommendation_from_score(score):
         return "🟡 RELOJ"
     else:
         return "🔴 EVITAR"
-
-
-def run_analysis():
-    try:
-        result = subprocess.run(
-            [sys.executable, "main.py"],
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace"
-        )
-        return result
-    except Exception as e:
-        return None, str(e)
 
 
 def prepare_portfolio(df):
@@ -218,7 +213,7 @@ def prepare_portfolio(df):
 
 
 st.title("📊 AI TRADER Executive Dashboard")
-st.caption("Panel profesional para entradas, salidas, riesgo, ganancia potencial, precio actual y Portfolio del Día.")
+st.caption("Panel profesional para entradas, salidas, riesgo, ganancia potencial, Equity Curve y Portfolio del Día.")
 
 h1, h2, h3 = st.columns([2, 1, 1])
 
@@ -283,13 +278,16 @@ if portfolio_df.empty:
     st.warning("No hay reportes disponibles. Presiona el botón Ejecutar análisis ahora.")
     st.stop()
 
+equity_data = equity_curve_agent(portfolio_df)
+equity_df = equity_data.get("equity_curve", pd.DataFrame())
+history_df = equity_data.get("history", pd.DataFrame())
+performance_metrics = equity_data.get("metrics", {})
 
 symbol_col = find_column(portfolio_df, ["symbol", "Symbol", "ticker", "Ticker"])
 contract_col = find_column(portfolio_df, ["contractSymbol", "contract", "option_contract", "contract_symbol"])
 type_col = find_column(portfolio_df, ["option_type", "type", "strategy", "entry_type"])
 score_col = find_column(portfolio_df, ["score", "final_score", "institutional_score", "contract_quality_score"])
 contracts_col = find_column(portfolio_df, ["contracts", "quantity", "qty"])
-price_col = find_column(portfolio_df, ["price", "lastPrice", "last_price", "underlying_price", "option_price"])
 current_price_col = find_column(portfolio_df, ["current_price", "market_price", "price", "underlying_price", "last_price"])
 entry_col = find_column(portfolio_df, ["entry", "entry_price", "recommended_entry", "buy_price", "option_entry", "entry_option_price", "lastPrice"])
 stop_col = find_column(portfolio_df, ["stop_loss", "stop", "sl", "recommended_stop", "option_stop"])
@@ -303,7 +301,6 @@ recommendation_col = find_column(portfolio_df, ["recommendation"])
 distance_col = find_column(portfolio_df, ["distance_to_entry_pct"])
 entry_status_col = find_column(portfolio_df, ["entry_status"])
 delta_col = find_column(portfolio_df, ["delta_estimate", "delta"])
-
 
 st.sidebar.title("AI TRADER")
 st.sidebar.caption("Panel de Control Ejecutivo")
@@ -337,7 +334,6 @@ if recommendation_col:
 st.sidebar.divider()
 st.sidebar.caption("Prioridad: delta mínimo 0.70 + score alto + Risk/Reward fuerte + entrada cercana.")
 
-
 total_positions = len(filtered_df)
 total_risk = filtered_df[risk_col].sum() if risk_col else 0
 total_profit = filtered_df[profit_col].sum() if profit_col else 0
@@ -358,6 +354,36 @@ m4.metric("Score Promedio", number(avg_score))
 m5.metric("Risk / Reward", number(avg_rr))
 m6.metric("Mejor Trade", best_symbol)
 
+st.subheader("📈 Equity Curve y Métricas Históricas")
+
+pm1, pm2, pm3, pm4, pm5, pm6 = st.columns(6)
+
+pm1.metric("Trades Históricos", number(performance_metrics.get("total_trades", 0)))
+pm2.metric("PnL Simulado", money(performance_metrics.get("total_pnl", 0)))
+pm3.metric("Win Rate", percent(performance_metrics.get("win_rate", 0)))
+pm4.metric("Profit Factor", number(performance_metrics.get("profit_factor", 0)))
+pm5.metric("Max Drawdown", money(performance_metrics.get("max_drawdown", 0)))
+pm6.metric("Return Total", percent(performance_metrics.get("total_return_pct", 0)))
+
+if equity_df is not None and not equity_df.empty and "equity" in equity_df.columns:
+    fig_equity = px.line(
+        equity_df,
+        x="date",
+        y="equity",
+        markers=True,
+        title="Equity Curve Histórica"
+    )
+    fig_equity.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font_color="white"
+    )
+    st.plotly_chart(fig_equity, width="stretch")
+
+    with st.expander("Ver datos de Equity Curve"):
+        st.dataframe(equity_df, width="stretch", hide_index=True)
+else:
+    st.warning("Todavía no hay datos suficientes para Equity Curve.")
 
 st.subheader("🏆 Portfolio del Día")
 
@@ -392,7 +418,6 @@ if not portfolio_day_df.empty:
                 st.metric("Riesgo", money(risk))
                 st.metric("Ganancia Potencial", money(profit))
                 st.metric("Risk / Reward", number(rr))
-
 
 st.subheader("🏆 Trade del Día")
 
@@ -453,7 +478,6 @@ if not filtered_df.empty:
 else:
     st.warning("No hay trades disponibles con los filtros actuales.")
 
-
 st.subheader("Top Operaciones Recomendadas")
 
 top_df = filtered_df.copy()
@@ -506,7 +530,6 @@ for _, row in top_df.iterrows():
         y6.metric("Delta", number(delta) if delta != "N/A" else "N/A")
         y7.metric("Score / DTE", f"{number(score)} / {dte}")
 
-
 st.subheader("Tabla Ejecutiva")
 
 display_cols = []
@@ -541,7 +564,6 @@ if score_col and score_col in table_df.columns:
 
 st.dataframe(table_df, width="stretch", hide_index=True)
 
-
 st.subheader("Análisis Visual del Portfolio")
 
 c1, c2 = st.columns(2)
@@ -560,7 +582,6 @@ with c2:
         fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="white")
         st.plotly_chart(fig, width="stretch")
 
-
 c3, c4 = st.columns(2)
 
 with c3:
@@ -578,7 +599,6 @@ with c4:
         fig = px.bar(score_chart, x=symbol_col, y=score_col, title="Ranking por Score Institucional", text_auto=True)
         fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="white")
         st.plotly_chart(fig, width="stretch")
-
 
 st.subheader("Resumen Ejecutivo del Trader")
 
@@ -599,42 +619,61 @@ if not filtered_df.empty:
         - Riesgo total estimado: {money(total_risk)}
         - Ganancia potencial estimada: {money(total_profit)}
         - Risk/Reward promedio: {number(avg_rr)}
+        - PnL histórico simulado: {money(performance_metrics.get("total_pnl", 0))}
+        - Retorno total simulado: {percent(performance_metrics.get("total_return_pct", 0))}
 
         **Regla sugerida:** priorizar contratos con Delta mínimo 0.70, COMPRA FUERTE, entrada cercana, Risk/Reward mayor de 2.00 y riesgo controlado.
         """
     )
 
-
 st.subheader("Reportes y Descargas")
 
-r1, r2, r3 = st.columns(3)
+r1, r2, r3, r4, r5 = st.columns(5)
 
 with r1:
     if latest_trades_file:
-        st.success("Trades CSV encontrado")
+        st.success("Trades CSV")
         st.caption(str(latest_trades_file))
         with open(latest_trades_file, "rb") as file:
-            st.download_button("Descargar Trades CSV", file, file_name=latest_trades_file.name, mime="text/csv")
+            st.download_button("Descargar Trades", file, file_name=latest_trades_file.name, mime="text/csv")
     else:
         st.warning("No hay trades CSV.")
 
 with r2:
     if latest_scanner_file:
-        st.success("Scanner CSV encontrado")
+        st.success("Scanner CSV")
         st.caption(str(latest_scanner_file))
         with open(latest_scanner_file, "rb") as file:
-            st.download_button("Descargar Scanner CSV", file, file_name=latest_scanner_file.name, mime="text/csv")
+            st.download_button("Descargar Scanner", file, file_name=latest_scanner_file.name, mime="text/csv")
     else:
         st.warning("No hay scanner CSV.")
 
 with r3:
     if latest_html_file:
-        st.success("Reporte HTML encontrado")
+        st.success("Reporte HTML")
         st.caption(str(latest_html_file))
         with open(latest_html_file, "rb") as file:
-            st.download_button("Descargar Reporte HTML", file, file_name=latest_html_file.name, mime="text/html")
+            st.download_button("Descargar HTML", file, file_name=latest_html_file.name, mime="text/html")
     else:
         st.warning("No hay HTML.")
+
+with r4:
+    equity_file = Path("reports") / "equity_curve.csv"
+    if equity_file.exists():
+        st.success("Equity CSV")
+        with open(equity_file, "rb") as file:
+            st.download_button("Descargar Equity", file, file_name="equity_curve.csv", mime="text/csv")
+    else:
+        st.warning("No hay Equity CSV.")
+
+with r5:
+    history_file = Path("reports") / "trade_history.csv"
+    if history_file.exists():
+        st.success("History CSV")
+        with open(history_file, "rb") as file:
+            st.download_button("Descargar History", file, file_name="trade_history.csv", mime="text/csv")
+    else:
+        st.warning("No hay History CSV.")
 
 st.divider()
 st.caption("AI TRADER | Executive Options Intelligence Dashboard | Timezone: America/New_York")

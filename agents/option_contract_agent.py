@@ -11,14 +11,14 @@ NY_TIMEZONE = ZoneInfo("America/New_York")
 MIN_DTE = 30
 MAX_DTE = 120
 
-MIN_VOLUME = 10
-MIN_OPEN_INTEREST = 50
-MAX_SPREAD_PCT = 25
+MIN_VOLUME = 100
+MIN_OPEN_INTEREST = 500
+MAX_SPREAD_PCT = 12
 
 OPTION_MULTIPLIER = 100
 
-MAX_RISK_PER_TRADE = 200
-MAX_ENTRY_PRICE = 6.00
+MAX_RISK_PER_TRADE = 400
+MAX_ENTRY_PRICE = 15.00
 
 MIN_DELTA = 0.70
 
@@ -55,28 +55,30 @@ def estimate_delta(option_type, strike, price):
     moneyness = strike / price
 
     if option_type == "CALL":
-        if moneyness <= 0.90:
+        if moneyness <= 0.88:
+            return 0.90
+        elif moneyness <= 0.92:
             return 0.85
-        elif moneyness <= 0.95:
+        elif moneyness <= 0.96:
             return 0.75
         elif moneyness <= 1.00:
             return 0.65
         elif moneyness <= 1.05:
             return 0.45
-        else:
-            return 0.25
+        return 0.25
 
     if option_type == "PUT":
-        if moneyness >= 1.10:
+        if moneyness >= 1.12:
+            return -0.90
+        elif moneyness >= 1.08:
             return -0.85
-        elif moneyness >= 1.05:
+        elif moneyness >= 1.04:
             return -0.75
         elif moneyness >= 1.00:
             return -0.65
         elif moneyness >= 0.95:
             return -0.45
-        else:
-            return -0.25
+        return -0.25
 
     return 0.0
 
@@ -102,29 +104,29 @@ def score_contract(row, price, option_type):
     delta = estimate_delta(option_type, strike, price)
 
     entry_price = mid_price if mid_price > 0 else last_price
-    stop_loss = round(entry_price * 0.65, 2)
-    take_profit = round(entry_price * 1.80, 2)
+    stop_loss = round(entry_price * 0.75, 2)
+    take_profit = round(entry_price * 1.70, 2)
 
     risk_amount = round((entry_price - stop_loss) * OPTION_MULTIPLIER, 2)
     potential_profit = round((take_profit - entry_price) * OPTION_MULTIPLIER, 2)
     risk_reward = round(potential_profit / risk_amount, 2) if risk_amount > 0 else 0
 
-    liquidity_score = min((volume / 500) * 25, 25) + min((open_interest / 1000) * 25, 25)
+    liquidity_score = min((volume / 1000) * 25, 25) + min((open_interest / 3000) * 25, 25)
 
-    if spread_pct <= 5:
+    if spread_pct <= 3:
         spread_score = 25
-    elif spread_pct <= 10:
+    elif spread_pct <= 6:
         spread_score = 18
-    elif spread_pct <= 15:
-        spread_score = 10
-    elif spread_pct <= 25:
-        spread_score = 5
+    elif spread_pct <= 9:
+        spread_score = 12
+    elif spread_pct <= MAX_SPREAD_PCT:
+        spread_score = 6
     else:
         spread_score = 0
 
-    if 35 <= dte <= 75:
+    if 45 <= dte <= 90:
         dte_score = 20
-    elif 30 <= dte <= 120:
+    elif MIN_DTE <= dte <= MAX_DTE:
         dte_score = 12
     else:
         dte_score = 0
@@ -145,13 +147,13 @@ def score_contract(row, price, option_type):
     risk_score = 20 if risk_amount <= MAX_RISK_PER_TRADE else 0
 
     final_score = (
-        liquidity_score +
-        spread_score +
-        dte_score +
-        moneyness_score +
-        delta_score +
-        price_score +
-        risk_score
+        liquidity_score
+        + spread_score
+        + dte_score
+        + moneyness_score
+        + delta_score
+        + price_score
+        + risk_score
     )
 
     final_score = round(min(final_score, 100), 2)
@@ -161,6 +163,7 @@ def score_contract(row, price, option_type):
         "spread": spread,
         "spread_pct": spread_pct,
         "delta_estimate": delta,
+        "delta": delta,
         "entry_price": round(entry_price, 2),
         "stop_loss": stop_loss,
         "take_profit": take_profit,
@@ -222,11 +225,8 @@ def get_option_candidates(symbol, option_type="CALL", min_dte=MIN_DTE, max_dte=M
 
     contracts = pd.concat(all_contracts, ignore_index=True)
 
-    contracts["volume"] = contracts["volume"].fillna(0)
-    contracts["openInterest"] = contracts["openInterest"].fillna(0)
-    contracts["bid"] = contracts["bid"].fillna(0)
-    contracts["ask"] = contracts["ask"].fillna(0)
-    contracts["lastPrice"] = contracts["lastPrice"].fillna(0)
+    for col in ["volume", "openInterest", "bid", "ask", "lastPrice"]:
+        contracts[col] = contracts[col].fillna(0)
 
     enriched_rows = []
 
@@ -241,13 +241,13 @@ def get_option_candidates(symbol, option_type="CALL", min_dte=MIN_DTE, max_dte=M
     contracts = pd.DataFrame(enriched_rows)
 
     contracts = contracts[
-        (contracts["lastPrice"] > 0) &
-        (contracts["volume"] >= MIN_VOLUME) &
-        (contracts["openInterest"] >= MIN_OPEN_INTEREST) &
-        (contracts["spread_pct"] <= MAX_SPREAD_PCT) &
-        (contracts["entry_price"] <= MAX_ENTRY_PRICE) &
-        (contracts["risk_amount"] <= MAX_RISK_PER_TRADE) &
-        (contracts["delta_estimate"].abs() >= MIN_DELTA)
+        (contracts["lastPrice"] > 0)
+        & (contracts["volume"] >= MIN_VOLUME)
+        & (contracts["openInterest"] >= MIN_OPEN_INTEREST)
+        & (contracts["spread_pct"] <= MAX_SPREAD_PCT)
+        & (contracts["entry_price"] <= MAX_ENTRY_PRICE)
+        & (contracts["risk_amount"] <= MAX_RISK_PER_TRADE)
+        & (contracts["delta_estimate"].abs() >= MIN_DELTA)
     ]
 
     if contracts.empty:
@@ -259,9 +259,9 @@ def get_option_candidates(symbol, option_type="CALL", min_dte=MIN_DTE, max_dte=M
             "delta_score",
             "risk_reward",
             "openInterest",
-            "volume"
+            "volume",
         ],
-        ascending=False
+        ascending=False,
     )
 
     return contracts
@@ -309,7 +309,10 @@ def option_contract_agent(state):
                 f"No contract found. Requirements: "
                 f"min delta {MIN_DELTA}, "
                 f"max risk ${MAX_RISK_PER_TRADE}, "
-                f"max entry price ${MAX_ENTRY_PRICE}."
+                f"max entry price ${MAX_ENTRY_PRICE}, "
+                f"min volume {MIN_VOLUME}, "
+                f"min open interest {MIN_OPEN_INTEREST}, "
+                f"max spread {MAX_SPREAD_PCT}%."
             )
             return state
 
@@ -317,13 +320,36 @@ def option_contract_agent(state):
         state["contract_status"] = "Contract selected successfully."
 
         fields = [
-            "contractSymbol", "option_type", "expiration", "dte", "strike",
-            "underlying_price", "lastPrice", "bid", "ask", "mid_price",
-            "spread", "spread_pct", "volume", "openInterest",
-            "delta_estimate", "contract_quality_score", "liquidity_score",
-            "spread_score", "dte_score", "moneyness_score", "delta_score",
-            "price_score", "risk_score", "entry_price", "stop_loss",
-            "take_profit", "risk_amount", "potential_profit", "risk_reward"
+            "contractSymbol",
+            "option_type",
+            "expiration",
+            "dte",
+            "strike",
+            "underlying_price",
+            "lastPrice",
+            "bid",
+            "ask",
+            "mid_price",
+            "spread",
+            "spread_pct",
+            "volume",
+            "openInterest",
+            "delta_estimate",
+            "delta",
+            "contract_quality_score",
+            "liquidity_score",
+            "spread_score",
+            "dte_score",
+            "moneyness_score",
+            "delta_score",
+            "price_score",
+            "risk_score",
+            "entry_price",
+            "stop_loss",
+            "take_profit",
+            "risk_amount",
+            "potential_profit",
+            "risk_reward",
         ]
 
         for field in fields:
