@@ -5,10 +5,10 @@ from pathlib import Path
 from datetime import datetime
 
 MAX_POSITIONS = 4
-MAX_TOTAL_RISK = 600
+MAX_TOTAL_RISK = 1200
 
-MIN_DELTA = 0.70
-MIN_SCORE = 75
+MIN_DELTA = 0.65
+MIN_SCORE = 70
 MIN_RISK_REWARD = 2.00
 
 REPORTS_DIR = Path("reports")
@@ -47,6 +47,33 @@ def get_contract_symbol(trade):
     return None
 
 
+def normalize_rating(rating):
+    return str(rating or "").upper().strip()
+
+
+def is_valid_rating(rating):
+    allowed_ratings = [
+        "EXCELENTE",
+        "INTERESANTE",
+        "BUY STRONG",
+        "STRONG BUY",
+        "FUERTE",
+        "STRONG",
+        "BUENA OPORTUNIDAD",
+        "ALTO RENDIMIENTO",
+        "🔥 ALTO RENDIMIENTO",
+        "✅ BUENA OPORTUNIDAD",
+    ]
+
+    rating = normalize_rating(rating)
+
+    for allowed in allowed_ratings:
+        if allowed in rating:
+            return True
+
+    return False
+
+
 def portfolio_agent(results):
     print("\nSTEP 9 PORTFOLIO")
     print("Construyendo cartera institucional...")
@@ -55,18 +82,15 @@ def portfolio_agent(results):
 
     valid_trades = []
 
-    allowed_ratings = [
-        "BUY STRONG",
-        "FUERTE",
-        "STRONG",
-        "INTERESANTE"
-    ]
-
     for trade in results:
         if not isinstance(trade, dict):
             continue
 
         score = safe_float(trade.get("score"))
+        contract_quality_score = safe_float(trade.get("contract_quality_score"))
+
+        final_score = max(score, contract_quality_score)
+
         delta = abs(safe_float(trade.get("delta")))
         risk_amount = safe_float(trade.get("risk_amount"))
         potential_profit = safe_float(trade.get("potential_profit"))
@@ -77,11 +101,12 @@ def portfolio_agent(results):
         trade_allowed = trade.get("trade_allowed")
         entry_ready = trade.get("entry_ready")
 
-        rating = str(trade.get("rating", "")).upper().strip()
+        rating = normalize_rating(trade.get("rating"))
+        recommendation = normalize_rating(trade.get("recommendation"))
 
         contract_symbol = get_contract_symbol(trade)
 
-        if score < MIN_SCORE:
+        if final_score < MIN_SCORE:
             continue
 
         if delta < MIN_DELTA:
@@ -90,7 +115,7 @@ def portfolio_agent(results):
         if risk_reward < MIN_RISK_REWARD:
             continue
 
-        if rating not in allowed_ratings:
+        if not is_valid_rating(rating) and not is_valid_rating(recommendation):
             continue
 
         if risk_amount <= 0:
@@ -104,7 +129,6 @@ def portfolio_agent(results):
 
         if contracts <= 0:
             contracts = 1
-            trade["contracts"] = 1
 
         if trade_allowed is False:
             continue
@@ -112,18 +136,23 @@ def portfolio_agent(results):
         if entry_ready is False:
             continue
 
+        trade["contracts"] = contracts
         trade["contractSymbol"] = contract_symbol
+        trade["portfolio_score"] = final_score
+
         valid_trades.append(trade)
 
     valid_trades = sorted(
         valid_trades,
         key=lambda x: (
-            safe_float(x.get("score")),
+            safe_float(x.get("portfolio_score")),
             abs(safe_float(x.get("delta"))),
             safe_float(x.get("risk_reward")),
-            safe_float(x.get("contract_quality_score"))
+            safe_float(x.get("potential_profit")),
+            safe_float(x.get("openInterest")),
+            safe_float(x.get("volume")),
         ),
-        reverse=True
+        reverse=True,
     )
 
     portfolio = []
@@ -141,7 +170,7 @@ def portfolio_agent(results):
         risk_amount = safe_float(trade.get("risk_amount"))
         potential_profit = safe_float(trade.get("potential_profit"))
 
-        option_type = trade.get("option_type")
+        option_type = str(trade.get("option_type", "")).upper()
 
         if total_risk + risk_amount > MAX_TOTAL_RISK:
             continue
@@ -178,14 +207,19 @@ def portfolio_agent(results):
             print(f"Tipo: {trade.get('option_type')}")
             print(f"Delta: {trade.get('delta')}")
             print(f"Contratos: {trade.get('contracts')}")
-            print(f"Entrada: {trade.get('entry_price')}")
+            print(f"Entrada opción: {trade.get('entry_price')}")
+            print(f"Entrada acción: {trade.get('stock_entry_price')}")
             print(f"Stop Loss: {trade.get('stop_loss')}")
-            print(f"Take Profit: {trade.get('take_profit')}")
+            print(f"Take Profit 1: {trade.get('take_profit_1')}")
+            print(f"Take Profit 2: {trade.get('take_profit_2')}")
             print(f"Riesgo: ${trade.get('risk_amount')}")
             print(f"Ganancia potencial: ${trade.get('potential_profit')}")
             print(f"Risk/Reward: {trade.get('risk_reward')}")
-            print(f"Score: {trade.get('score')}")
+            print(f"Score institucional: {trade.get('score')}")
+            print(f"Score contrato: {trade.get('contract_quality_score')}")
+            print(f"Score portfolio: {trade.get('portfolio_score')}")
             print(f"Rating: {trade.get('rating')}")
+            print(f"Recomendación: {trade.get('recommendation')}")
 
     print("--------------------------------")
     print(f"Total posiciones: {portfolio_summary['positions']}")
@@ -205,13 +239,24 @@ def portfolio_agent(results):
                 "delta": trade.get("delta"),
                 "contracts": trade.get("contracts"),
                 "entry_price": trade.get("entry_price"),
+                "max_option_entry": trade.get("max_option_entry"),
                 "stop_loss": trade.get("stop_loss"),
                 "take_profit": trade.get("take_profit"),
+                "take_profit_1": trade.get("take_profit_1"),
+                "take_profit_2": trade.get("take_profit_2"),
+                "trailing_stop": trade.get("trailing_stop"),
+                "stock_entry_price": trade.get("stock_entry_price"),
+                "stock_stop_loss": trade.get("stock_stop_loss"),
+                "stock_take_profit_1": trade.get("stock_take_profit_1"),
+                "stock_take_profit_2": trade.get("stock_take_profit_2"),
                 "risk_amount": trade.get("risk_amount"),
                 "potential_profit": trade.get("potential_profit"),
                 "risk_reward": trade.get("risk_reward"),
                 "score": trade.get("score"),
                 "rating": trade.get("rating"),
+                "recommendation": trade.get("recommendation"),
+                "recommendation_reason": trade.get("recommendation_reason"),
+                "portfolio_score": trade.get("portfolio_score"),
                 "dte": trade.get("dte"),
                 "strike": trade.get("strike"),
                 "expiration": trade.get("expiration"),
@@ -231,6 +276,7 @@ def portfolio_agent(results):
                 "delta_score": trade.get("delta_score"),
                 "price_score": trade.get("price_score"),
                 "risk_score": trade.get("risk_score"),
+                "rr_score": trade.get("rr_score"),
             })
 
         df = pd.DataFrame(portfolio_rows)

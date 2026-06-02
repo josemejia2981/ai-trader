@@ -11,16 +11,20 @@ NY_TIMEZONE = ZoneInfo("America/New_York")
 MIN_DTE = 30
 MAX_DTE = 120
 
-MIN_VOLUME = 100
-MIN_OPEN_INTEREST = 500
+MIN_VOLUME = 50
+MIN_OPEN_INTEREST = 300
 MAX_SPREAD_PCT = 12
 
 OPTION_MULTIPLIER = 100
 
-MAX_RISK_PER_TRADE = 400
-MAX_ENTRY_PRICE = 15.00
+MAX_RISK_PER_TRADE = 650
+MAX_ENTRY_PRICE = 25.00
 
-MIN_DELTA = 0.70
+MIN_DELTA = 0.65
+
+MAX_CALL_OTM_PCT = 0.08
+MAX_PUT_OTM_PCT = 0.08
+MAX_STRIKE_DISTANCE_PCT = 0.12
 
 
 def now_new_york():
@@ -29,7 +33,7 @@ def now_new_york():
 
 def safe_float(value, default=0.0):
     try:
-        if pd.isna(value):
+        if value is None or pd.isna(value):
             return default
         return float(value)
     except Exception:
@@ -52,35 +56,123 @@ def estimate_delta(option_type, strike, price):
     if price <= 0 or strike <= 0:
         return 0.0
 
-    moneyness = strike / price
+    ratio = strike / price
 
     if option_type == "CALL":
-        if moneyness <= 0.88:
-            return 0.90
-        elif moneyness <= 0.92:
+        if ratio <= 0.90:
             return 0.85
-        elif moneyness <= 0.96:
+        elif ratio <= 0.95:
             return 0.75
-        elif moneyness <= 1.00:
+        elif ratio <= 1.00:
             return 0.65
-        elif moneyness <= 1.05:
+        elif ratio <= 1.04:
+            return 0.55
+        elif ratio <= 1.08:
             return 0.45
         return 0.25
 
     if option_type == "PUT":
-        if moneyness >= 1.12:
-            return -0.90
-        elif moneyness >= 1.08:
+        if ratio >= 1.10:
             return -0.85
-        elif moneyness >= 1.04:
+        elif ratio >= 1.05:
             return -0.75
-        elif moneyness >= 1.00:
+        elif ratio >= 1.00:
             return -0.65
-        elif moneyness >= 0.95:
+        elif ratio >= 0.96:
+            return -0.55
+        elif ratio >= 0.92:
             return -0.45
         return -0.25
 
     return 0.0
+
+
+def is_strike_valid(option_type, strike, price):
+    strike = safe_float(strike)
+    price = safe_float(price)
+
+    if strike <= 0 or price <= 0:
+        return False
+
+    distance_pct = abs(strike - price) / price
+
+    if distance_pct > MAX_STRIKE_DISTANCE_PCT:
+        return False
+
+    if option_type == "CALL":
+        if strike > price * (1 + MAX_CALL_OTM_PCT):
+            return False
+
+    if option_type == "PUT":
+        if strike < price * (1 - MAX_PUT_OTM_PCT):
+            return False
+
+    return True
+
+
+def build_action_levels(option_type, underlying_price, strike, entry_price):
+    underlying_price = safe_float(underlying_price)
+    strike = safe_float(strike)
+    entry_price = safe_float(entry_price)
+
+    if underlying_price <= 0:
+        return {}
+
+    if option_type == "CALL":
+        stock_entry = round(underlying_price, 2)
+        stock_stop = round(underlying_price * 0.97, 2)
+        stock_tp1 = round(max(strike, underlying_price * 1.04), 2)
+        stock_tp2 = round(underlying_price * 1.08, 2)
+    else:
+        stock_entry = round(underlying_price, 2)
+        stock_stop = round(underlying_price * 1.03, 2)
+        stock_tp1 = round(min(strike, underlying_price * 0.96), 2)
+        stock_tp2 = round(underlying_price * 0.92, 2)
+
+    option_stop = round(entry_price * 0.70, 2)
+    option_tp1 = round(entry_price * 1.50, 2)
+    option_tp2 = round(entry_price * 2.00, 2)
+    max_option_entry = round(entry_price * 1.08, 2)
+    trailing_stop = round(entry_price * 1.25, 2)
+
+    return {
+        "stock_entry_price": stock_entry,
+        "stock_stop_loss": stock_stop,
+        "stock_take_profit_1": stock_tp1,
+        "stock_take_profit_2": stock_tp2,
+        "max_option_entry": max_option_entry,
+        "option_stop_loss": option_stop,
+        "option_take_profit_1": option_tp1,
+        "option_take_profit_2": option_tp2,
+        "option_trailing_stop": trailing_stop,
+    }
+
+
+def get_recommendation(score, delta, risk_reward, spread_pct, volume, open_interest):
+    score = safe_float(score)
+    delta = abs(safe_float(delta))
+    risk_reward = safe_float(risk_reward)
+    spread_pct = safe_float(spread_pct)
+    volume = safe_float(volume)
+    open_interest = safe_float(open_interest)
+
+    if (
+        score >= 85
+        and delta >= 0.65
+        and risk_reward >= 2
+        and spread_pct <= 8
+        and volume >= 100
+        and open_interest >= 1000
+    ):
+        return "🔥 ALTO RENDIMIENTO", "Contrato fuerte: delta, liquidez, spread y riesgo/recompensa favorables."
+
+    if score >= 75 and delta >= 0.65 and risk_reward >= 1.8:
+        return "✅ BUENA OPORTUNIDAD", "Contrato válido con estructura operable."
+
+    if score >= 60:
+        return "👀 WATCHLIST", "Contrato aceptable, pero necesita mejor confirmación."
+
+    return "🔴 EVITAR", "Contrato débil o con condiciones insuficientes."
 
 
 def score_contract(row, price, option_type):
@@ -101,83 +193,133 @@ def score_contract(row, price, option_type):
         spread = 0
         spread_pct = 100
 
+    entry_price = mid_price if mid_price > 0 else last_price
     delta = estimate_delta(option_type, strike, price)
 
-    entry_price = mid_price if mid_price > 0 else last_price
-    stop_loss = round(entry_price * 0.75, 2)
-    take_profit = round(entry_price * 1.70, 2)
+    levels = build_action_levels(option_type, price, strike, entry_price)
 
-    risk_amount = round((entry_price - stop_loss) * OPTION_MULTIPLIER, 2)
-    potential_profit = round((take_profit - entry_price) * OPTION_MULTIPLIER, 2)
+    option_stop = levels.get("option_stop_loss", round(entry_price * 0.70, 2))
+    option_tp1 = levels.get("option_take_profit_1", round(entry_price * 1.50, 2))
+    option_tp2 = levels.get("option_take_profit_2", round(entry_price * 2.00, 2))
+
+    risk_amount = round((entry_price - option_stop) * OPTION_MULTIPLIER, 2)
+    potential_profit = round((option_tp2 - entry_price) * OPTION_MULTIPLIER, 2)
     risk_reward = round(potential_profit / risk_amount, 2) if risk_amount > 0 else 0
 
-    liquidity_score = min((volume / 1000) * 25, 25) + min((open_interest / 3000) * 25, 25)
+    distance_pct = round(abs(strike - price) / price * 100, 2) if price > 0 else 100
+
+    score = 0
+
+    if abs(delta) >= 0.75:
+        score += 20
+    elif abs(delta) >= 0.65:
+        score += 16
+    elif abs(delta) >= 0.55:
+        score += 8
+    else:
+        score -= 25
+
+    if distance_pct <= 3:
+        score += 15
+    elif distance_pct <= 6:
+        score += 12
+    elif distance_pct <= 8:
+        score += 8
+    elif distance_pct <= 12:
+        score += 4
+    else:
+        score -= 30
+
+    if volume >= 1000:
+        score += 15
+    elif volume >= 100:
+        score += 10
+    elif volume >= MIN_VOLUME:
+        score += 5
+    else:
+        score -= 10
+
+    if open_interest >= 3000:
+        score += 15
+    elif open_interest >= 1000:
+        score += 12
+    elif open_interest >= MIN_OPEN_INTEREST:
+        score += 8
+    else:
+        score -= 12
 
     if spread_pct <= 3:
-        spread_score = 25
+        score += 15
     elif spread_pct <= 6:
-        spread_score = 18
-    elif spread_pct <= 9:
-        spread_score = 12
+        score += 12
     elif spread_pct <= MAX_SPREAD_PCT:
-        spread_score = 6
+        score += 6
     else:
-        spread_score = 0
+        score -= 20
 
     if 45 <= dte <= 90:
-        dte_score = 20
+        score += 10
     elif MIN_DTE <= dte <= MAX_DTE:
-        dte_score = 12
+        score += 6
     else:
-        dte_score = 0
+        score -= 10
 
-    distance = abs((strike - price) / price) * 100 if price > 0 else 100
-
-    if distance <= 5:
-        moneyness_score = 15
-    elif distance <= 10:
-        moneyness_score = 12
-    elif distance <= 20:
-        moneyness_score = 8
+    if 2 <= entry_price <= 20:
+        score += 10
+    elif 20 < entry_price <= MAX_ENTRY_PRICE:
+        score += 5
     else:
-        moneyness_score = 4
+        score -= 10
 
-    delta_score = 20 if abs(delta) >= MIN_DELTA else 0
-    price_score = 15 if entry_price <= MAX_ENTRY_PRICE else 0
-    risk_score = 20 if risk_amount <= MAX_RISK_PER_TRADE else 0
+    if risk_amount <= MAX_RISK_PER_TRADE:
+        score += 10
+    else:
+        score -= 15
 
-    final_score = (
-        liquidity_score
-        + spread_score
-        + dte_score
-        + moneyness_score
-        + delta_score
-        + price_score
-        + risk_score
+    if risk_reward >= 3:
+        score += 10
+    elif risk_reward >= 2:
+        score += 7
+    elif risk_reward >= 1.5:
+        score += 3
+    else:
+        score -= 10
+
+    score = round(max(0, min(score, 100)), 2)
+
+    recommendation, recommendation_reason = get_recommendation(
+        score,
+        delta,
+        risk_reward,
+        spread_pct,
+        volume,
+        open_interest,
     )
 
-    final_score = round(min(final_score, 100), 2)
-
     return {
-        "mid_price": entry_price,
+        "mid_price": round(entry_price, 2),
         "spread": spread,
         "spread_pct": spread_pct,
         "delta_estimate": delta,
         "delta": delta,
         "entry_price": round(entry_price, 2),
-        "stop_loss": stop_loss,
-        "take_profit": take_profit,
+        "max_option_entry": levels.get("max_option_entry"),
+        "stop_loss": option_stop,
+        "take_profit": option_tp2,
+        "take_profit_1": option_tp1,
+        "take_profit_2": option_tp2,
+        "trailing_stop": levels.get("option_trailing_stop"),
+        "stock_entry_price": levels.get("stock_entry_price"),
+        "stock_stop_loss": levels.get("stock_stop_loss"),
+        "stock_take_profit_1": levels.get("stock_take_profit_1"),
+        "stock_take_profit_2": levels.get("stock_take_profit_2"),
         "risk_amount": risk_amount,
         "potential_profit": potential_profit,
         "risk_reward": risk_reward,
-        "liquidity_score": round(liquidity_score, 2),
-        "spread_score": spread_score,
-        "dte_score": dte_score,
-        "moneyness_score": moneyness_score,
-        "delta_score": delta_score,
-        "price_score": price_score,
-        "risk_score": risk_score,
-        "contract_quality_score": final_score,
+        "strike_distance_pct": distance_pct,
+        "contract_quality_score": score,
+        "recommendation": recommendation,
+        "recommendation_reason": recommendation_reason,
     }
 
 
@@ -226,37 +368,52 @@ def get_option_candidates(symbol, option_type="CALL", min_dte=MIN_DTE, max_dte=M
     contracts = pd.concat(all_contracts, ignore_index=True)
 
     for col in ["volume", "openInterest", "bid", "ask", "lastPrice"]:
+        if col not in contracts.columns:
+            contracts[col] = 0
         contracts[col] = contracts[col].fillna(0)
 
     enriched_rows = []
 
     for _, row in contracts.iterrows():
+        strike = safe_float(row.get("strike"))
+
+        if not is_strike_valid(option_type, strike, price):
+            continue
+
         score_data = score_contract(row, price, option_type)
+
+        if abs(score_data.get("delta", 0)) < MIN_DELTA:
+            continue
+
+        if score_data.get("spread_pct", 100) > MAX_SPREAD_PCT:
+            continue
+
+        if safe_float(row.get("openInterest")) < MIN_OPEN_INTEREST:
+            continue
+
+        if safe_float(row.get("volume")) < MIN_VOLUME:
+            continue
+
+        if score_data.get("entry_price", 0) > MAX_ENTRY_PRICE:
+            continue
+
+        if score_data.get("risk_amount", 999999) > MAX_RISK_PER_TRADE:
+            continue
 
         for key, value in score_data.items():
             row[key] = value
 
         enriched_rows.append(row)
 
-    contracts = pd.DataFrame(enriched_rows)
-
-    contracts = contracts[
-        (contracts["lastPrice"] > 0)
-        & (contracts["volume"] >= MIN_VOLUME)
-        & (contracts["openInterest"] >= MIN_OPEN_INTEREST)
-        & (contracts["spread_pct"] <= MAX_SPREAD_PCT)
-        & (contracts["entry_price"] <= MAX_ENTRY_PRICE)
-        & (contracts["risk_amount"] <= MAX_RISK_PER_TRADE)
-        & (contracts["delta_estimate"].abs() >= MIN_DELTA)
-    ]
-
-    if contracts.empty:
+    if not enriched_rows:
         return pd.DataFrame()
 
-    contracts = contracts.sort_values(
+    candidates = pd.DataFrame(enriched_rows)
+
+    candidates = candidates.sort_values(
         by=[
             "contract_quality_score",
-            "delta_score",
+            "delta",
             "risk_reward",
             "openInterest",
             "volume",
@@ -264,7 +421,7 @@ def get_option_candidates(symbol, option_type="CALL", min_dte=MIN_DTE, max_dte=M
         ascending=False,
     )
 
-    return contracts
+    return candidates
 
 
 def select_best_option_contract(symbol, direction="CALL"):
@@ -306,14 +463,12 @@ def option_contract_agent(state):
         if best_contract is None:
             state["best_contract"] = None
             state["contract_status"] = (
-                f"No contract found. Requirements: "
-                f"min delta {MIN_DELTA}, "
-                f"max risk ${MAX_RISK_PER_TRADE}, "
-                f"max entry price ${MAX_ENTRY_PRICE}, "
-                f"min volume {MIN_VOLUME}, "
-                f"min open interest {MIN_OPEN_INTEREST}, "
-                f"max spread {MAX_SPREAD_PCT}%."
+                "No se encontró contrato válido. "
+                "Se bloquearon contratos con delta bajo, strike muy lejano, "
+                "spread alto, poco volumen o riesgo excesivo."
             )
+            state["recommendation"] = "🔴 EVITAR"
+            state["recommendation_reason"] = "No hay contrato institucional válido."
             return state
 
         state["best_contract"] = best_contract
@@ -336,20 +491,24 @@ def option_contract_agent(state):
             "openInterest",
             "delta_estimate",
             "delta",
-            "contract_quality_score",
-            "liquidity_score",
-            "spread_score",
-            "dte_score",
-            "moneyness_score",
-            "delta_score",
-            "price_score",
-            "risk_score",
             "entry_price",
+            "max_option_entry",
             "stop_loss",
             "take_profit",
+            "take_profit_1",
+            "take_profit_2",
+            "trailing_stop",
+            "stock_entry_price",
+            "stock_stop_loss",
+            "stock_take_profit_1",
+            "stock_take_profit_2",
             "risk_amount",
             "potential_profit",
             "risk_reward",
+            "strike_distance_pct",
+            "contract_quality_score",
+            "recommendation",
+            "recommendation_reason",
         ]
 
         for field in fields:
@@ -365,4 +524,6 @@ def option_contract_agent(state):
     except Exception as e:
         state["best_contract"] = None
         state["contract_status"] = f"Error selecting contract: {e}"
+        state["recommendation"] = "🔴 ERROR"
+        state["recommendation_reason"] = str(e)
         return state
