@@ -20,7 +20,7 @@ OPTION_MULTIPLIER = 100
 MAX_RISK_PER_TRADE = 650
 MAX_ENTRY_PRICE = 25.00
 
-MIN_DELTA = 0.65
+MIN_DELTA = 0.70
 
 MAX_CALL_OTM_PCT = 0.08
 MAX_PUT_OTM_PCT = 0.08
@@ -36,6 +36,15 @@ def safe_float(value, default=0.0):
         if value is None or pd.isna(value):
             return default
         return float(value)
+    except Exception:
+        return default
+
+
+def safe_int(value, default=0):
+    try:
+        if value is None or pd.isna(value):
+            return default
+        return int(float(value))
     except Exception:
         return default
 
@@ -64,9 +73,9 @@ def estimate_delta(option_type, strike, price):
         elif ratio <= 0.95:
             return 0.75
         elif ratio <= 1.00:
-            return 0.65
+            return 0.70
         elif ratio <= 1.04:
-            return 0.55
+            return 0.60
         elif ratio <= 1.08:
             return 0.45
         return 0.25
@@ -77,9 +86,9 @@ def estimate_delta(option_type, strike, price):
         elif ratio >= 1.05:
             return -0.75
         elif ratio >= 1.00:
-            return -0.65
+            return -0.70
         elif ratio >= 0.96:
-            return -0.55
+            return -0.60
         elif ratio >= 0.92:
             return -0.45
         return -0.25
@@ -99,13 +108,11 @@ def is_strike_valid(option_type, strike, price):
     if distance_pct > MAX_STRIKE_DISTANCE_PCT:
         return False
 
-    if option_type == "CALL":
-        if strike > price * (1 + MAX_CALL_OTM_PCT):
-            return False
+    if option_type == "CALL" and strike > price * (1 + MAX_CALL_OTM_PCT):
+        return False
 
-    if option_type == "PUT":
-        if strike < price * (1 - MAX_PUT_OTM_PCT):
-            return False
+    if option_type == "PUT" and strike < price * (1 - MAX_PUT_OTM_PCT):
+        return False
 
     return True
 
@@ -158,15 +165,15 @@ def get_recommendation(score, delta, risk_reward, spread_pct, volume, open_inter
 
     if (
         score >= 85
-        and delta >= 0.65
+        and delta >= MIN_DELTA
         and risk_reward >= 2
         and spread_pct <= 8
         and volume >= 100
         and open_interest >= 1000
     ):
-        return "🔥 ALTO RENDIMIENTO", "Contrato fuerte: delta, liquidez, spread y riesgo/recompensa favorables."
+        return "🟢 COMPRA FUERTE", "Contrato fuerte: delta, liquidez, spread y riesgo/recompensa favorables."
 
-    if score >= 75 and delta >= 0.65 and risk_reward >= 1.8:
+    if score >= 75 and delta >= MIN_DELTA and risk_reward >= 1.8:
         return "✅ BUENA OPORTUNIDAD", "Contrato válido con estructura operable."
 
     if score >= 60:
@@ -180,9 +187,9 @@ def score_contract(row, price, option_type):
     last_price = safe_float(row.get("lastPrice"))
     bid = safe_float(row.get("bid"))
     ask = safe_float(row.get("ask"))
-    volume = safe_float(row.get("volume"))
-    open_interest = safe_float(row.get("openInterest"))
-    dte = safe_float(row.get("dte"))
+    volume = safe_int(row.get("volume"))
+    open_interest = safe_int(row.get("openInterest"))
+    dte = safe_int(row.get("dte"))
 
     if ask > 0 and bid > 0:
         mid_price = round((bid + ask) / 2, 2)
@@ -210,14 +217,14 @@ def score_contract(row, price, option_type):
 
     score = 0
 
-    if abs(delta) >= 0.75:
-        score += 20
-    elif abs(delta) >= 0.65:
-        score += 16
-    elif abs(delta) >= 0.55:
+    if abs(delta) >= 0.80:
+        score += 22
+    elif abs(delta) >= 0.70:
+        score += 18
+    elif abs(delta) >= 0.60:
         score += 8
     else:
-        score -= 25
+        score -= 30
 
     if distance_pct <= 3:
         score += 15
@@ -297,6 +304,12 @@ def score_contract(row, price, option_type):
     )
 
     return {
+        "strike": round(strike, 2),
+        "lastPrice": round(last_price, 2),
+        "bid": round(bid, 2),
+        "ask": round(ask, 2),
+        "volume": volume,
+        "openInterest": open_interest,
         "mid_price": round(entry_price, 2),
         "spread": spread,
         "spread_pct": spread_pct,
@@ -318,6 +331,7 @@ def score_contract(row, price, option_type):
         "risk_reward": risk_reward,
         "strike_distance_pct": distance_pct,
         "contract_quality_score": score,
+        "score": score,
         "recommendation": recommendation,
         "recommendation_reason": recommendation_reason,
     }
@@ -367,7 +381,7 @@ def get_option_candidates(symbol, option_type="CALL", min_dte=MIN_DTE, max_dte=M
 
     contracts = pd.concat(all_contracts, ignore_index=True)
 
-    for col in ["volume", "openInterest", "bid", "ask", "lastPrice"]:
+    for col in ["volume", "openInterest", "bid", "ask", "lastPrice", "strike"]:
         if col not in contracts.columns:
             contracts[col] = 0
         contracts[col] = contracts[col].fillna(0)
@@ -388,10 +402,10 @@ def get_option_candidates(symbol, option_type="CALL", min_dte=MIN_DTE, max_dte=M
         if score_data.get("spread_pct", 100) > MAX_SPREAD_PCT:
             continue
 
-        if safe_float(row.get("openInterest")) < MIN_OPEN_INTEREST:
+        if safe_int(row.get("openInterest")) < MIN_OPEN_INTEREST:
             continue
 
-        if safe_float(row.get("volume")) < MIN_VOLUME:
+        if safe_int(row.get("volume")) < MIN_VOLUME:
             continue
 
         if score_data.get("entry_price", 0) > MAX_ENTRY_PRICE:
@@ -418,7 +432,7 @@ def get_option_candidates(symbol, option_type="CALL", min_dte=MIN_DTE, max_dte=M
             "openInterest",
             "volume",
         ],
-        ascending=False,
+        ascending=[False, False, False, False, False],
     )
 
     return candidates
@@ -465,10 +479,11 @@ def option_contract_agent(state):
             state["contract_status"] = (
                 "No se encontró contrato válido. "
                 "Se bloquearon contratos con delta bajo, strike muy lejano, "
-                "spread alto, poco volumen o riesgo excesivo."
+                "spread alto, poco volumen, bajo open interest o riesgo excesivo."
             )
             state["recommendation"] = "🔴 EVITAR"
             state["recommendation_reason"] = "No hay contrato institucional válido."
+            state["trade_allowed"] = False
             return state
 
         state["best_contract"] = best_contract
@@ -507,6 +522,7 @@ def option_contract_agent(state):
             "risk_reward",
             "strike_distance_pct",
             "contract_quality_score",
+            "score",
             "recommendation",
             "recommendation_reason",
         ]
@@ -514,10 +530,26 @@ def option_contract_agent(state):
         for field in fields:
             state[field] = best_contract.get(field)
 
+        # Alias para que dashboard, portfolio y report_agent los lean sin problema
         state["option_contract"] = best_contract.get("contractSymbol")
+        state["contract_symbol"] = best_contract.get("contractSymbol")
+        state["recommended_strike"] = best_contract.get("strike")
+        state["option_strike"] = best_contract.get("strike")
+        state["option_delta"] = best_contract.get("delta")
+        state["option_open_interest"] = best_contract.get("openInterest")
+        state["open_interest"] = best_contract.get("openInterest")
+        state["option_volume"] = best_contract.get("volume")
+        state["option_bid"] = best_contract.get("bid")
+        state["option_ask"] = best_contract.get("ask")
+        state["option_last_price"] = best_contract.get("lastPrice")
+        state["option_entry"] = best_contract.get("entry_price")
+        state["option_dte"] = best_contract.get("dte")
+        state["expiration_date"] = best_contract.get("expiration")
 
         if not state.get("contracts"):
             state["contracts"] = 1
+
+        state["trade_allowed"] = True
 
         return state
 
@@ -526,4 +558,5 @@ def option_contract_agent(state):
         state["contract_status"] = f"Error selecting contract: {e}"
         state["recommendation"] = "🔴 ERROR"
         state["recommendation_reason"] = str(e)
+        state["trade_allowed"] = False
         return state
