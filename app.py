@@ -19,31 +19,26 @@ def ny_time():
 
 
 def find_latest_trade_csv():
-    patterns = [
-        "portfolio_*.csv",
-        "options_scanner_*.csv",
-        "trades_*.csv",
-    ]
+    # PRIORIDAD 1: Portfolio
+    portfolio_files = glob.glob(os.path.join(REPORTS_DIR, "portfolio_*.csv"))
+    if portfolio_files:
+        return max(portfolio_files, key=os.path.getmtime)
 
-    files = []
+    # PRIORIDAD 2: Scanner
+    scanner_files = glob.glob(os.path.join(REPORTS_DIR, "options_scanner_*.csv"))
+    if scanner_files:
+        return max(scanner_files, key=os.path.getmtime)
 
-    for pattern in patterns:
-        files.extend(glob.glob(os.path.join(REPORTS_DIR, pattern)))
+    # PRIORIDAD 3: Trades
+    trade_files = glob.glob(os.path.join(REPORTS_DIR, "trades_*.csv"))
+    if trade_files:
+        return max(trade_files, key=os.path.getmtime)
 
-    files = [
-        f for f in files
-        if "equity_curve" not in os.path.basename(f).lower()
-    ]
-
-    if not files:
-        return None
-
-    return max(files, key=os.path.getmtime)
+    return None
 
 
 def remove_duplicate_columns(df):
-    df = df.loc[:, ~df.columns.duplicated()]
-    return df
+    return df.loc[:, ~df.columns.duplicated()]
 
 
 def normalize_columns(df):
@@ -51,42 +46,32 @@ def normalize_columns(df):
         "contract": "contractSymbol",
         "contract_symbol": "contractSymbol",
         "option_contract": "contractSymbol",
-
         "type": "option_type",
         "optionType": "option_type",
-
         "Strike": "strike",
         "option_strike": "strike",
         "recommended_strike": "strike",
-
         "Delta": "delta",
         "option_delta": "delta",
         "delta_estimate": "delta",
-
         "open_interest": "openInterest",
         "open interest": "openInterest",
         "Open Interest": "openInterest",
         "OpenInterest": "openInterest",
         "option_open_interest": "openInterest",
         "oi": "openInterest",
-
         "option_volume": "volume",
         "Volume": "volume",
         "vol": "volume",
-
         "last_price": "lastPrice",
         "option_last_price": "lastPrice",
         "option_price": "lastPrice",
-
         "Bid": "bid",
         "option_bid": "bid",
-
         "Ask": "ask",
         "option_ask": "ask",
-
         "risk": "risk_amount",
         "riskAmount": "risk_amount",
-
         "potentialProfit": "potential_profit",
         "profit_target": "potential_profit",
     }
@@ -136,14 +121,6 @@ def format_money(value):
         return "N/A"
 
 
-def format_number(value):
-    try:
-        value = float(value)
-        return f"{value:,.2f}"
-    except Exception:
-        return "N/A"
-
-
 def fix_last_price(df):
     if "lastPrice" not in df.columns:
         df["lastPrice"] = "N/A"
@@ -151,10 +128,9 @@ def fix_last_price(df):
     bid = safe_numeric_series(df, "bid")
     ask = safe_numeric_series(df, "ask")
     last_price = pd.to_numeric(df["lastPrice"], errors="coerce")
+    mid_price = ((bid + ask) / 2).round(2)
 
-    mid = ((bid + ask) / 2).round(2)
-
-    df["lastPrice"] = last_price.fillna(mid)
+    df["lastPrice"] = last_price.fillna(mid_price)
     df["lastPrice"] = df["lastPrice"].fillna("N/A")
 
     return df
@@ -181,7 +157,7 @@ with c2:
 
 
 # =========================
-# CARGAR ARCHIVO
+# CARGAR ARCHIVO CORRECTO
 # =========================
 
 latest_csv = find_latest_trade_csv()
@@ -222,6 +198,7 @@ columns = [
     "potential_profit",
     "risk_reward",
     "dte",
+    "expiration",
     "trade_allowed",
 ]
 
@@ -241,10 +218,9 @@ df = df.sort_values("score_numeric", ascending=False)
 risk_total = safe_numeric_series(df, "risk_amount").sum()
 profit_total = safe_numeric_series(df, "potential_profit").sum()
 avg_score = safe_numeric_series(df, "score").mean()
-avg_rr = safe_numeric_series(df, "risk_reward").mean()
 
 best_trade = "N/A"
-if "symbol" in df.columns and len(df) > 0:
+if len(df) > 0:
     best_trade = safe_value(df.iloc[0].get("symbol", "N/A"))
 
 m1, m2, m3, m4, m5 = st.columns(5)
@@ -302,6 +278,7 @@ for _, row in df.head(5).iterrows():
     potential_profit = safe_value(row.get("potential_profit"))
     risk_reward = safe_value(row.get("risk_reward"))
     dte = safe_value(row.get("dte"))
+    expiration = safe_value(row.get("expiration"))
     trade_allowed = safe_value(row.get("trade_allowed"))
 
     with st.container(border=True):
@@ -314,6 +291,7 @@ for _, row in df.head(5).iterrows():
             st.write(f"**Strike recomendado:** {strike}")
             st.write(f"**Delta:** {delta}")
             st.write(f"**DTE:** {dte}")
+            st.write(f"**Expiración:** {expiration}")
 
         with b:
             st.write(f"**Open Interest:** {open_interest}")
@@ -338,4 +316,4 @@ for _, row in df.head(5).iterrows():
 with st.expander("🔍 Ver columnas reales del CSV"):
     st.write(df.columns.tolist())
 
-st.caption("AI TRADER actualizado: carga contratos reales, evita equity_curve.csv y corrige columnas duplicadas.")
+st.caption("AI TRADER actualizado: carga portfolio primero, muestra Strike, Delta, Open Interest, Volumen, Bid, Ask y DTE.")
