@@ -1,5 +1,9 @@
 import os
+import sys
 import glob
+import subprocess
+import threading
+import time
 import pandas as pd
 import streamlit as st
 from datetime import datetime
@@ -145,15 +149,62 @@ now = ny_time()
 st.title("📊 Panel ejecutivo de AI TRADER")
 st.caption("Dashboard profesional para opciones, Delta, Strike, Open Interest, riesgo y portfolio.")
 
-st.success("Sistema activo")
 
-c1, c2 = st.columns(2)
+# =========================
+# BOTÓN EJECUTAR ANÁLISIS
+# =========================
+
+def run_analysis():
+    """Ejecuta main.py y captura output línea por línea."""
+    script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "main.py")
+    proc = subprocess.Popen(
+        [sys.executable, script],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        cwd=os.path.dirname(os.path.abspath(__file__))
+    )
+    lines = []
+    for line in proc.stdout:
+        lines.append(line.rstrip())
+    proc.wait()
+    return proc.returncode, lines
+
+col_btn, col_status = st.columns([2, 5])
+
+with col_btn:
+    ejecutar = st.button("🚀 Ejecutar Análisis Nuevo", type="primary", use_container_width=True)
+
+if ejecutar:
+    with st.status("⏳ Analizando mercado... esto toma 1-3 minutos", expanded=True) as status:
+        st.write("Descargando datos de yfinance...")
+        returncode, output_lines = run_analysis()
+        for line in output_lines[-30:]:   # últimas 30 líneas del log
+            if line.strip():
+                st.text(line)
+        if returncode == 0:
+            status.update(label="✅ Análisis completado. Recargando datos...", state="complete")
+            time.sleep(1)
+            st.rerun()
+        else:
+            status.update(label="❌ Error en el análisis. Revisa la terminal.", state="error")
+
+# Hora de mercado
+open_mkt = now.weekday() < 5 and now.replace(hour=9,minute=30,second=0,microsecond=0) <= now <= now.replace(hour=16,minute=0,second=0,microsecond=0)
+
+c1, c2, c3 = st.columns(3)
 
 with c1:
     st.metric("Fecha NY", now.strftime("%d-%m-%Y"))
 
 with c2:
     st.metric("Hora NY", now.strftime("%H:%M:%S"))
+
+with c3:
+    if open_mkt:
+        st.success("🟢 Mercado ABIERTO")
+    else:
+        st.warning("🔴 Mercado CERRADO")
 
 
 # =========================
