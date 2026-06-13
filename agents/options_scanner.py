@@ -1,238 +1,337 @@
-# agents/options_scanner.py
+"""
+options_scanner.py  –  Scanner dinámico de opciones
+=====================================================
+Reemplaza el scanner original que analizaba activos fijos.
+Ahora rastrea el mercado amplio y filtra automáticamente
+contratos con:
+  • Delta alto  (≥ 0.40 por defecto)
+  • Theta bajo  (≤ -0.05 por defecto)
+  • Precio asequible (prima ≤ $5.00 por defecto)
+  • DTE largo  (≥ 30 días por defecto)
+  • Open Interest decente (≥ 100)
+"""
 
-import os
-from datetime import datetime
-
-import pandas as pd
 import yfinance as yf
+import pandas as pd
+import numpy as np
+from datetime import datetime, timedelta
+import time
+import logging
+
+logger = logging.getLogger(__name__)
+
+# ─────────────────────────────────────────────
+# UNIVERSO DE ACTIVOS  (ampliable fácilmente)
+# ─────────────────────────────────────────────
+
+# S&P 500 muestra representativa por sector
+SP500_SAMPLE = [
+    # Tech
+    "AAPL","MSFT","NVDA","GOOGL","META","AMZN","TSLA","AMD","INTC","CRM",
+    "ORCL","ADBE","QCOM","TXN","AVGO","MU","AMAT","LRCX","KLAC","SNPS",
+    # Financials
+    "JPM","BAC","WFC","GS","MS","C","BLK","AXP","V","MA",
+    "COF","USB","PNC","TFC","SCHW","CME","ICE","SPGI","MCO",
+    # Healthcare
+    "UNH","JNJ","PFE","ABBV","LLY","MRK","TMO","ABT","DHR","AMGN",
+    "GILD","BIIB","REGN","VRTX","ISRG","MDT","BSX","EW","ZTS",
+    # Consumer
+    "HD","WMT","COST","TGT","LOW","MCD","SBUX","NKE","PG","KO",
+    "PEP","PM","MO","CL","EL","ULTA","LULU","YUM","DPZ",
+    # Energy
+    "XOM","CVX","COP","EOG","SLB","PSX","VLO","MPC","OXY","HAL",
+    # Industrials
+    "HON","CAT","DE","MMM","GE","LMT","RTX","NOC","BA","UPS","FDX",
+    # ETFs con alta liquidez de opciones
+    "SPY","QQQ","IWM","DIA","XLF","XLK","XLE","XLV","GLD","SLV",
+    "ARKK","SOXX","XBI","IBB","EEM","EFA","TLT","HYG","VXX",
+    # Populares en opciones (alta liquidez)
+    "PLTR","SOFI","RIVN","LCID","MARA","RIOT","COIN","HOOD",
+    "SNOW","DDOG","NET","CRWD","ZS","PANW","OKTA","MDB","SHOP",
+    "SQ","PYPL","ROKU","UBER","LYFT","ABNB","DASH","RBLX",
+    "GME","AMC","BBBY","BB","NOK","SNDL","CLOV","WISH",
+]
+
+# Elimina duplicados manteniendo orden
+UNIVERSE = list(dict.fromkeys(SP500_SAMPLE))
 
 
-def get_dte(expiration):
-    today = datetime.now().date()
-    exp_date = datetime.strptime(expiration, "%Y-%m-%d").date()
-    return (exp_date - today).days
+# ─────────────────────────────────────────────
+# FILTROS POR DEFECTO
+# ─────────────────────────────────────────────
+DEFAULT_FILTERS = {
+    "min_delta":        0.35,   # Delta mínimo absoluto (calls: positivo, puts: se usa abs)
+    "max_theta":       -0.05,   # Theta máximo (más negativo = penalizado; -0.05 filtra theta muy agresivo)
+    "max_premium":      5.00,   # Prima máxima en $ por contrato unitario (× 100 = costo real)
+    "min_dte":           30,    # Días a vencimiento mínimos
+    "max_dte":          180,    # Días a vencimiento máximos (largo plazo preferido)
+    "min_open_interest": 50,    # OI mínimo para liquidez
+    "min_volume":         5,    # Volumen mínimo del día
+    "option_type":     "call",  # "call", "put" o "both"
+    "max_symbols":       80,    # Cuántos símbolos escanear por corrida
+}
 
 
-def scan_options(symbol="NVDA", max_rows=20, min_dte=30):
-    symbol = symbol.upper()
-    ticker = yf.Ticker(symbol)
+# ─────────────────────────────────────────────
+# FUNCIONES AUXILIARES
+# ─────────────────────────────────────────────
 
-    try:
-        hist = ticker.history(period="5d")
-        current_price = float(hist["Close"].iloc[-1]) if not hist.empty else 0
-    except Exception:
-        current_price = 0
-
-    try:
-        expirations = ticker.options
-    except Exception:
-        return pd.DataFrame()
-
-    valid_expirations = [
-        exp for exp in expirations
-        if get_dte(exp) >= min_dte
-    ]
-
-    if not valid_expirations:
-        return pd.DataFrame()
-
-    all_contracts = []
-
-    for expiration in valid_expirations[:5]:
+def get_liquid_symbols(universe: list, limit: int = 80) -> list:
+    """
+    Filtra el universo buscando activos con precio > $5
+    y volumen promedio razonable para que tengan opciones líquidas.
+    Devuelve hasta `limit` símbolos.
+    """
+    liquid = []
+    logger.info(f"Filtrando {len(universe)} símbolos para encontrar los más líquidos…")
+    
+    for sym in universe:
+        if len(liquid) >= limit:
+            break
         try:
-            dte = get_dte(expiration)
-            chain = ticker.option_chain(expiration)
-
-            calls = chain.calls.copy()
-            puts = chain.puts.copy()
-
-            calls["type"] = "CALL"
-            puts["type"] = "PUT"
-
-            df = pd.concat([calls, puts], ignore_index=True)
-
-            df["symbol"] = symbol
-            df["expiration"] = expiration
-            df["dte"] = dte
-            df["current_price"] = current_price
-
-            all_contracts.append(df)
-
+            t = yf.Ticker(sym)
+            info = t.fast_info
+            price = getattr(info, 'last_price', None) or getattr(info, 'regularMarketPrice', None)
+            if price and price >= 5:
+                liquid.append(sym)
         except Exception:
-            continue
+            pass
+        time.sleep(0.05)  # pequeño throttle
+    
+    logger.info(f"  → {len(liquid)} símbolos líquidos encontrados")
+    return liquid
 
-    if not all_contracts:
-        return pd.DataFrame()
 
-    df = pd.concat(all_contracts, ignore_index=True)
+def score_contract(row: pd.Series) -> float:
+    """
+    Puntaje compuesto para ordenar los mejores contratos.
+    Mayor puntaje = mejor contrato.
+    
+    Criterios:
+      + Delta alto (más gamma potential)
+      + Theta bajo en valor absoluto (decay lento)
+      + Premium bajo (asequible)
+      + DTE largo (más tiempo)
+      + OI alto (liquidez)
+    """
+    delta = abs(row.get("delta", 0) or 0)
+    theta = abs(row.get("theta", 0) or 0)
+    premium = row.get("lastPrice", 0) or 0
+    dte = row.get("dte", 0) or 0
+    oi = row.get("openInterest", 0) or 0
 
-    needed_columns = [
-        "contractSymbol",
-        "symbol",
-        "expiration",
-        "dte",
-        "type",
-        "strike",
-        "lastPrice",
-        "bid",
-        "ask",
-        "volume",
-        "openInterest",
-        "impliedVolatility",
-        "current_price",
-    ]
+    if premium <= 0:
+        return 0
 
-    df = df[[col for col in needed_columns if col in df.columns]]
-
-    for col in [
-        "strike",
-        "volume",
-        "openInterest",
-        "bid",
-        "ask",
-        "lastPrice",
-        "impliedVolatility",
-        "current_price",
-    ]:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
-
-    df["premium"] = df["ask"]
-    df.loc[df["premium"] <= 0, "premium"] = df["lastPrice"]
-
-    df = df[df["premium"] > 0]
-    df = df[df["strike"] > 0]
-
-    if df.empty:
-        return pd.DataFrame()
-
-    df["spread"] = (df["ask"] - df["bid"]).round(2)
-
-    df["spread_percent"] = 0.0
-    df.loc[df["premium"] > 0, "spread_percent"] = (
-        (df["spread"] / df["premium"]) * 100
-    ).round(2)
-
-    df["moneyness_percent"] = 0.0
-    if current_price > 0:
-        df["moneyness_percent"] = (
-            abs(df["strike"] - current_price) / current_price * 100
-        ).round(2)
-
-    df["score"] = 0
-
-    df.loc[df["openInterest"] >= 500, "score"] += 8
-    df.loc[df["openInterest"] >= 1000, "score"] += 7
-    df.loc[df["openInterest"] >= 3000, "score"] += 5
-    df.loc[df["volume"] >= 100, "score"] += 3
-    df.loc[df["volume"] >= 300, "score"] += 2
-
-    df.loc[(df["spread_percent"] > 0) & (df["spread_percent"] <= 10), "score"] += 20
-    df.loc[(df["spread_percent"] > 10) & (df["spread_percent"] <= 20), "score"] += 15
-    df.loc[(df["spread_percent"] > 20) & (df["spread_percent"] <= 35), "score"] += 8
-
-    df.loc[(df["dte"] >= 45) & (df["dte"] <= 90), "score"] += 20
-    df.loc[(df["dte"] >= 30) & (df["dte"] < 45), "score"] += 12
-    df.loc[(df["dte"] > 90) & (df["dte"] <= 150), "score"] += 12
-    df.loc[(df["dte"] > 150) & (df["dte"] <= 240), "score"] += 6
-
-    df.loc[df["moneyness_percent"] <= 5, "score"] += 20
-    df.loc[(df["moneyness_percent"] > 5) & (df["moneyness_percent"] <= 10), "score"] += 15
-    df.loc[(df["moneyness_percent"] > 10) & (df["moneyness_percent"] <= 15), "score"] += 8
-    df.loc[(df["moneyness_percent"] > 15) & (df["moneyness_percent"] <= 25), "score"] += 3
-
-    df.loc[(df["premium"] >= 1) & (df["premium"] <= 15), "score"] += 15
-    df.loc[(df["premium"] > 15) & (df["premium"] <= 30), "score"] += 8
-    df.loc[(df["premium"] >= 0.50) & (df["premium"] < 1), "score"] += 5
-
-    df["score"] = df["score"].clip(upper=100)
-    df["swing_score"] = df["score"]
-
-    df["liquidity_score"] = (
-        (df["volume"] * 0.45) +
-        (df["openInterest"] * 0.55)
-    ).round(2)
-
-    df["rating"] = df["score"].apply(get_rating)
-
-    df["entry_price"] = df["premium"].round(2)
-    df["stop_loss"] = (df["premium"] * 0.70).round(2)
-    df["take_profit"] = (df["premium"] * 1.50).round(2)
-
-    df = df.sort_values(
-        by=["score", "openInterest", "volume"],
-        ascending=False
+    # Relación delta/theta (queremos delta alto y theta bajo)
+    dt_ratio = delta / (theta + 0.001)
+    
+    # Normalizar: puntaje base
+    score = (
+        delta * 3.0          # Peso alto para delta
+        + dt_ratio * 0.5     # Buen ratio delta/theta
+        + (dte / 30) * 0.3   # Más DTE = mejor
+        - premium * 0.2      # Penalizar prima alta
+        + np.log1p(oi) * 0.1 # Premio por liquidez
     )
-
-    return df.head(max_rows)
-
-
-def get_rating(score):
-    if score >= 90:
-        return "EXCELENTE"
-    elif score >= 80:
-        return "MUY FUERTE"
-    elif score >= 70:
-        return "FUERTE"
-    elif score >= 60:
-        return "INTERESANTE"
-    elif score >= 50:
-        return "REGULAR"
-    else:
-        return "DEBIL"
+    return round(score, 4)
 
 
-def run_auto_options_scanner(results=None):
-    print("Ejecutando scanner automatico de opciones...")
+def fetch_options_for_symbol(
+    symbol: str,
+    filters: dict,
+    option_type: str = "call"
+) -> pd.DataFrame:
+    """
+    Obtiene cadena de opciones de un símbolo y aplica filtros.
+    Retorna DataFrame con los contratos que pasan los filtros.
+    """
+    results = []
+    today = datetime.now().date()
+    
+    try:
+        ticker = yf.Ticker(symbol)
+        exps = ticker.options
+        if not exps:
+            return pd.DataFrame()
 
-    symbols = []
+        for exp_str in exps:
+            exp_date = datetime.strptime(exp_str, "%Y-%m-%d").date()
+            dte = (exp_date - today).days
 
-    if results:
-        for item in results:
-            symbol = item.get("symbol")
-            if symbol:
-                symbols.append(symbol)
-
-    if not symbols:
-        symbols = ["NVDA", "AAPL", "TSLA", "MSFT"]
-
-    all_results = []
-
-    for symbol in symbols:
-        print(f"Buscando mejores contratos para {symbol}...")
-
-        try:
-            df = scan_options(symbol=symbol, max_rows=5, min_dte=30)
-
-            if df.empty:
+            # Filtro de DTE
+            if dte < filters["min_dte"] or dte > filters["max_dte"]:
                 continue
 
-            all_results.append(df)
+            try:
+                chain = ticker.option_chain(exp_str)
+            except Exception:
+                continue
 
-        except Exception as e:
-            print(f"Error escaneando {symbol}: {e}")
+            # Seleccionar calls, puts o ambos
+            frames = []
+            if option_type in ("call", "both"):
+                df_c = chain.calls.copy()
+                df_c["option_type"] = "call"
+                frames.append(df_c)
+            if option_type in ("put", "both"):
+                df_p = chain.puts.copy()
+                df_p["option_type"] = "put"
+                frames.append(df_p)
+
+            if not frames:
+                continue
+
+            df = pd.concat(frames, ignore_index=True)
+
+            # Columnas de Greeks (no siempre disponibles en yfinance)
+            for col in ["delta", "theta", "gamma", "vega", "impliedVolatility"]:
+                if col not in df.columns:
+                    df[col] = np.nan
+
+            df["dte"] = dte
+            df["expiration"] = exp_str
+            df["symbol"] = symbol
+
+            # ── FILTROS ──────────────────────────────────────
+            # Delta: si está disponible en la cadena
+            if df["delta"].notna().any():
+                df = df[df["delta"].abs() >= filters["min_delta"]]
+            
+            # Theta: si está disponible
+            if df["theta"].notna().any():
+                df = df[df["theta"] >= filters["max_theta"]]
+            
+            # Prima asequible
+            df = df[df["lastPrice"] <= filters["max_premium"]]
+            df = df[df["lastPrice"] > 0]
+            
+            # Liquidez
+            df = df[df["openInterest"] >= filters["min_open_interest"]]
+            df = df[df["volume"].fillna(0) >= filters["min_volume"]]
+
+            if not df.empty:
+                results.append(df)
+
+            time.sleep(0.1)  # throttle entre expirations
+
+    except Exception as e:
+        logger.warning(f"Error procesando {symbol}: {e}")
+        return pd.DataFrame()
+
+    if not results:
+        return pd.DataFrame()
+
+    combined = pd.concat(results, ignore_index=True)
+    return combined
+
+
+# ─────────────────────────────────────────────
+# SCANNER PRINCIPAL
+# ─────────────────────────────────────────────
+
+def scan_market(
+    filters: dict = None,
+    custom_symbols: list = None,
+    progress_callback=None,
+) -> pd.DataFrame:
+    """
+    Escanea el mercado completo buscando los mejores contratos de opciones.
+    
+    Parámetros
+    ----------
+    filters : dict
+        Diccionario de filtros. Si None, usa DEFAULT_FILTERS.
+    custom_symbols : list
+        Lista custom de símbolos. Si None, usa UNIVERSE.
+    progress_callback : callable(symbol, idx, total)
+        Función llamada en cada paso para actualizar UI (ej. Streamlit progress bar).
+    
+    Retorna
+    -------
+    pd.DataFrame con todos los contratos que pasan los filtros,
+    ordenados por score descendente.
+    """
+    if filters is None:
+        filters = DEFAULT_FILTERS.copy()
+
+    # Símbolos a escanear
+    symbols = custom_symbols if custom_symbols else UNIVERSE
+    limit = filters.get("max_symbols", 80)
+    symbols = symbols[:limit]
+
+    logger.info(f"🔍 Iniciando scan de {len(symbols)} símbolos…")
+    logger.info(f"   Filtros: delta≥{filters['min_delta']} | theta≥{filters['max_theta']} | "
+                f"prima≤${filters['max_premium']} | DTE {filters['min_dte']}-{filters['max_dte']}d")
+
+    all_results = []
+    option_type = filters.get("option_type", "call")
+    total = len(symbols)
+
+    for idx, sym in enumerate(symbols, 1):
+        if progress_callback:
+            progress_callback(sym, idx, total)
+
+        df = fetch_options_for_symbol(sym, filters, option_type)
+        if not df.empty:
+            all_results.append(df)
+            logger.info(f"  ✅ {sym}: {len(df)} contratos encontrados")
+        else:
+            logger.debug(f"  ⬜ {sym}: sin contratos que pasen los filtros")
+
+        time.sleep(0.15)  # throttle general
 
     if not all_results:
-        print("No se encontraron contratos.")
-        return None
+        logger.warning("⚠️  Ningún contrato pasó los filtros. Considera relajar los parámetros.")
+        return pd.DataFrame()
 
-    final_df = pd.concat(all_results, ignore_index=True)
+    final = pd.concat(all_results, ignore_index=True)
 
-    final_df = final_df.sort_values(
-        by=["score", "openInterest", "volume"],
-        ascending=False
+    # ── SCORE y ORDENAMIENTO ─────────────────
+    final["score"] = final.apply(score_contract, axis=1)
+    final = final.sort_values("score", ascending=False).reset_index(drop=True)
+
+    # ── COLUMNAS FINALES ─────────────────────
+    cols_order = [
+        "symbol", "option_type", "expiration", "dte",
+        "strike", "lastPrice", "delta", "theta", "gamma", "vega",
+        "impliedVolatility", "openInterest", "volume",
+        "bid", "ask", "contractSymbol", "score"
+    ]
+    cols_present = [c for c in cols_order if c in final.columns]
+    final = final[cols_present]
+
+    # Renombrar para claridad
+    final = final.rename(columns={
+        "lastPrice":         "prima",
+        "impliedVolatility": "IV",
+        "openInterest":      "OI",
+        "contractSymbol":    "contrato",
+    })
+
+    logger.info(f"✨ Scan completo: {len(final)} contratos encontrados en {final['symbol'].nunique()} activos")
+    return final
+
+
+# ─────────────────────────────────────────────
+# FUNCIÓN DE CONVENIENCIA PARA STREAMLIT
+# ─────────────────────────────────────────────
+
+def get_top_contracts(n: int = 20, filters: dict = None, custom_symbols: list = None) -> pd.DataFrame:
+    """Retorna los N mejores contratos del scan."""
+    df = scan_market(filters=filters, custom_symbols=custom_symbols)
+    if df.empty:
+        return df
+    return df.head(n)
+
+
+def get_top_by_symbol(df: pd.DataFrame, n_per_symbol: int = 2) -> pd.DataFrame:
+    """Del resultado del scan, devuelve los N mejores contratos por símbolo."""
+    if df.empty:
+        return df
+    return (
+        df.groupby("symbol")
+          .head(n_per_symbol)
+          .sort_values("score", ascending=False)
+          .reset_index(drop=True)
     )
-
-    os.makedirs("reports", exist_ok=True)
-
-    filename = datetime.now().strftime("reports/options_scanner_%Y_%m_%d_%H_%M.csv")
-    final_df.to_csv(filename, index=False)
-
-    print(f"Reporte scanner guardado: {filename}")
-
-    return filename
-
-
-if __name__ == "__main__":
-    report = run_auto_options_scanner()
-    print(report)
