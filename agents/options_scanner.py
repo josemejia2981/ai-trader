@@ -4,21 +4,92 @@ options_scanner.py  –  Scanner dinámico de opciones
 Reemplaza el scanner original que analizaba activos fijos.
 Ahora rastrea el mercado amplio y filtra automáticamente
 contratos con:
-  • Delta alto  (≥ 0.40 por defecto)
-  • Theta bajo  (≤ -0.05 por defecto)
-  • Precio asequible (prima ≤ $5.00 por defecto)
-  • DTE largo  (≥ 30 días por defecto)
-  • Open Interest decente (≥ 100)
+  • Delta alto  (≥ 0.35 por defecto)
+  • Theta bajo  (≥ -0.10 por defecto, decay lento)
+  • Precio asequible (prima ≤ $8.00 por defecto)
+  • DTE largo  (30-180 días por defecto)
+  • Open Interest decente (≥ 10)
+
+NOTA: yfinance NO entrega Delta ni Theta en su cadena de opciones.
+Este scanner los CALCULA con Black-Scholes a partir del precio del
+subyacente, strike, implied volatility y tiempo a vencimiento.
 """
 
 import yfinance as yf
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
+from math import log, sqrt, exp, pi
 import time
 import logging
 
 logger = logging.getLogger(__name__)
+
+# Tasa libre de riesgo aproximada (T-bill). Ajustable.
+RISK_FREE_RATE = 0.045
+
+
+# ─────────────────────────────────────────────
+# BLACK-SCHOLES: calcular Greeks que yfinance NO da
+# ─────────────────────────────────────────────
+
+def _norm_cdf(x: float) -> float:
+    """CDF de la normal estándar (sin scipy)."""
+    return 0.5 * (1.0 + _erf(x / sqrt(2.0)))
+
+
+def _erf(x: float) -> float:
+    """Aproximación de la función error (Abramowitz & Stegun 7.1.26)."""
+    sign = 1 if x >= 0 else -1
+    x = abs(x)
+    t = 1.0 / (1.0 + 0.3275911 * x)
+    y = 1.0 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t
+                - 0.284496736) * t + 0.254829592) * t * exp(-x * x)
+    return sign * y
+
+
+def _norm_pdf(x: float) -> float:
+    """PDF de la normal estándar."""
+    return exp(-0.5 * x * x) / sqrt(2.0 * pi)
+
+
+def black_scholes_greeks(S, K, T, sigma, option_type="call", r=RISK_FREE_RATE):
+    """
+    Calcula delta y theta (diario) con Black-Scholes.
+    
+    S     = precio del subyacente
+    K     = strike
+    T     = tiempo a vencimiento en AÑOS (dte/365)
+    sigma = implied volatility (ej. 0.45 = 45%)
+    
+    Retorna (delta, theta_diario, gamma, vega) o (nan,...) si no se puede calcular.
+    """
+    try:
+        if S <= 0 or K <= 0 or T <= 0 or sigma <= 0:
+            return (np.nan, np.nan, np.nan, np.nan)
+
+        d1 = (log(S / K) + (r + 0.5 * sigma ** 2) * T) / (sigma * sqrt(T))
+        d2 = d1 - sigma * sqrt(T)
+
+        pdf_d1 = _norm_pdf(d1)
+
+        if option_type == "call":
+            delta = _norm_cdf(d1)
+            theta = (-(S * pdf_d1 * sigma) / (2 * sqrt(T))
+                     - r * K * exp(-r * T) * _norm_cdf(d2))
+        else:  # put
+            delta = _norm_cdf(d1) - 1.0
+            theta = (-(S * pdf_d1 * sigma) / (2 * sqrt(T))
+                     + r * K * exp(-r * T) * _norm_cdf(-d2))
+
+        theta_daily = theta / 365.0
+        gamma = pdf_d1 / (S * sigma * sqrt(T))
+        vega = (S * pdf_d1 * sqrt(T)) / 100.0
+
+        return (round(delta, 4), round(theta_daily, 4),
+                round(gamma, 5), round(vega, 4))
+    except Exception:
+        return (np.nan, np.nan, np.nan, np.nan)
 
 # ─────────────────────────────────────────────
 # UNIVERSO DE ACTIVOS  (ampliable fácilmente)
@@ -61,12 +132,12 @@ UNIVERSE = list(dict.fromkeys(SP500_SAMPLE))
 # ─────────────────────────────────────────────
 DEFAULT_FILTERS = {
     "min_delta":        0.35,   # Delta mínimo absoluto (calls: positivo, puts: se usa abs)
-    "max_theta":       -0.05,   # Theta máximo (más negativo = penalizado; -0.05 filtra theta muy agresivo)
-    "max_premium":      5.00,   # Prima máxima en $ por contrato unitario (× 100 = costo real)
+    "max_theta":       -0.10,   # Theta máximo (más negativo permite contratos; -0.10 = pierde hasta $10/día)
+    "max_premium":      8.00,   # Prima máxima en $ por contrato unitario (× 100 = costo real)
     "min_dte":           30,    # Días a vencimiento mínimos
     "max_dte":          180,    # Días a vencimiento máximos (largo plazo preferido)
-    "min_open_interest": 50,    # OI mínimo para liquidez
-    "min_volume":         5,    # Volumen mínimo del día
+    "min_open_interest": 10,    # OI mínimo para liquidez
+    "min_volume":         0,    # Volumen mínimo del día (0 = no filtrar; opciones largas suelen tener vol bajo)
     "option_type":     "call",  # "call", "put" o "both"
     "max_symbols":       80,    # Cuántos símbolos escanear por corrida
 }
@@ -155,6 +226,18 @@ def fetch_options_for_symbol(
         if not exps:
             return pd.DataFrame()
 
+        # Precio del subyacente (necesario para Black-Scholes)
+        try:
+            fi = ticker.fast_info
+            spot = getattr(fi, "last_price", None) or getattr(fi, "regularMarketPrice", None)
+        except Exception:
+            spot = None
+        if not spot or spot <= 0:
+            try:
+                spot = ticker.history(period="1d")["Close"].iloc[-1]
+            except Exception:
+                spot = None
+
         for exp_str in exps:
             exp_date = datetime.strptime(exp_str, "%Y-%m-%d").date()
             dte = (exp_date - today).days
@@ -184,31 +267,51 @@ def fetch_options_for_symbol(
 
             df = pd.concat(frames, ignore_index=True)
 
-            # Columnas de Greeks (no siempre disponibles en yfinance)
-            for col in ["delta", "theta", "gamma", "vega", "impliedVolatility"]:
-                if col not in df.columns:
-                    df[col] = np.nan
-
             df["dte"] = dte
             df["expiration"] = exp_str
             df["symbol"] = symbol
 
+            # Asegurar que existe impliedVolatility
+            if "impliedVolatility" not in df.columns:
+                df["impliedVolatility"] = np.nan
+
+            # ── CALCULAR GREEKS con Black-Scholes ────────────
+            # yfinance NO entrega delta/theta, así que los calculamos
+            T = dte / 365.0
+            deltas, thetas, gammas, vegas = [], [], [], []
+            for _, r in df.iterrows():
+                K = r.get("strike", np.nan)
+                sigma = r.get("impliedVolatility", np.nan)
+                opt = r.get("option_type", "call")
+                if spot and K and sigma and not pd.isna(sigma) and sigma > 0:
+                    d, th, g, v = black_scholes_greeks(spot, K, T, sigma, opt)
+                else:
+                    d, th, g, v = (np.nan, np.nan, np.nan, np.nan)
+                deltas.append(d); thetas.append(th); gammas.append(g); vegas.append(v)
+
+            df["delta"] = deltas
+            df["theta"] = thetas
+            df["gamma"] = gammas
+            df["vega"]  = vegas
+            df["spot"]  = spot
+
             # ── FILTROS ──────────────────────────────────────
-            # Delta: si está disponible en la cadena
+            # Delta (ahora SÍ existe gracias a Black-Scholes)
             if df["delta"].notna().any():
                 df = df[df["delta"].abs() >= filters["min_delta"]]
-            
-            # Theta: si está disponible
+
+            # Theta: queremos decay lento → theta >= max_theta (ej. >= -0.10)
             if df["theta"].notna().any():
                 df = df[df["theta"] >= filters["max_theta"]]
-            
+
             # Prima asequible
             df = df[df["lastPrice"] <= filters["max_premium"]]
             df = df[df["lastPrice"] > 0]
-            
+
             # Liquidez
-            df = df[df["openInterest"] >= filters["min_open_interest"]]
-            df = df[df["volume"].fillna(0) >= filters["min_volume"]]
+            df = df[df["openInterest"].fillna(0) >= filters["min_open_interest"]]
+            if filters.get("min_volume", 0) > 0:
+                df = df[df["volume"].fillna(0) >= filters["min_volume"]]
 
             if not df.empty:
                 results.append(df)

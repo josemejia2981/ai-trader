@@ -360,9 +360,15 @@ if run_scan:
         # ── NOTA SOBRE GREEKS ─────────────────────
         if results_df[["delta", "theta"]].isna().all().all():
             st.info(
-                "ℹ️ **Los Greeks (Delta, Theta) no estaban disponibles** para estos contratos vía yfinance. "
-                "El filtrado se basó en Prima, DTE y Open Interest. "
-                "Para Greeks en tiempo real, conecta una fuente de datos como Tradier, TD Ameritrade o CBOE."
+                "ℹ️ **No se pudieron calcular los Greeks** porque faltó la Implied Volatility "
+                "en estos contratos. El filtrado se basó en Prima, DTE y Open Interest. "
+                "Los Greeks se calculan con Black-Scholes a partir de la IV de yfinance."
+            )
+        else:
+            st.caption(
+                "📐 Delta, Theta, Gamma y Vega calculados con **Black-Scholes** "
+                "(yfinance no los entrega directamente). Son estimaciones; "
+                "para precisión institucional usa Tradier o TD Ameritrade."
             )
 
 # ─────────────────────────────────────────────
