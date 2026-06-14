@@ -7,7 +7,7 @@ sys.path.insert(0, '.')
 try:
     from config.settings import DATA_PERIOD, DATA_INTERVAL
 except Exception:
-    DATA_PERIOD = "6mo"
+    DATA_PERIOD = "1y"
     DATA_INTERVAL = "1d"
 
 
@@ -108,6 +108,7 @@ def get_market_data(symbol):
     ema9 = close.ewm(span=9, adjust=False).mean()
     ema21 = close.ewm(span=21, adjust=False).mean()
     ema50 = close.ewm(span=50, adjust=False).mean()
+    ema200 = close.ewm(span=200, adjust=False).mean()
     ema12 = close.ewm(span=12, adjust=False).mean()
     ema26 = close.ewm(span=26, adjust=False).mean()
     macd = ema12 - ema26
@@ -128,6 +129,7 @@ def get_market_data(symbol):
     cur_ema9 = sf(ema9)
     cur_ema21 = sf(ema21)
     cur_ema50 = sf(ema50)
+    cur_ema200 = float(ema200.iloc[-1]) if not pd.isna(ema200.iloc[-1]) else 0.0
     cur_macd = sf(macd)
     cur_macd_s = sf(macd_sig)
     cur_macd_h = sf(macd_hist)
@@ -153,13 +155,13 @@ def get_market_data(symbol):
     print("  Precio: $" + str(round(price, 2)))
     print("  RSI: " + str(round(cur_rsi, 1)) + " | ADX: " + str(round(cur_adx, 1)))
     print("  Tendencia: " + trend + " (corto:" + short_trend + " medio:" + medium_trend + ")")
-    print("  MACD: " + str(round(cur_macd, 4)) + " | BB%B: " + str(round(cur_bb_pct, 2)))
-    print("  Stoch K/D: " + str(round(cur_stk, 1)) + "/" + str(round(cur_std, 1)))
+    print("  EMA50:" + str(round(cur_ema50, 2)) + " EMA200:" + str(round(cur_ema200, 2)) + " | MACD: " + str(round(cur_macd, 4)))
+    print("  BB%B: " + str(round(cur_bb_pct, 2)) + " | Stoch K/D: " + str(round(cur_stk, 1)) + "/" + str(round(cur_std, 1)))
     print("  ATR: $" + str(round(cur_atr, 2)) + " (" + str(atr_pct) + "%) | Vol ratio: " + str(round(vol_ratio, 2)) + "x")
 
     return {
         "symbol": symbol, "price": price,
-        "rsi": cur_rsi, "ema9": cur_ema9, "ema21": cur_ema21, "ema50": cur_ema50,
+        "rsi": cur_rsi, "ema9": cur_ema9, "ema21": cur_ema21, "ema50": cur_ema50, "ema200": cur_ema200,
         "macd": cur_macd, "macd_signal": cur_macd_s, "macd_hist": cur_macd_h,
         "macd_momentum": macd_momentum,
         "atr": cur_atr, "atr_pct": atr_pct,
