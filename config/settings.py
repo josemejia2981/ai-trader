@@ -66,7 +66,7 @@ MIN_SCORE_PORTFOLIO  = 75    # Subido de 70 → portfolio solo con los mejores
 MIN_RISK_REWARD      = 2.0   # Subido de 1.8 → mínimo 2:1 para entrar
 
 # --- DATOS DE MERCADO ---
-DATA_PERIOD   = "6mo"        # 6 meses de histórico para indicadores sólidos
+DATA_PERIOD   = "1y"         # 1 año — necesario para calcular EMA200 correctamente
 DATA_INTERVAL = "1d"         # Daily — swing trading, no intraday
 
 # --- REPORTES ---
