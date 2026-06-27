@@ -160,6 +160,7 @@ if ejecutar:
                 st.text(line)
         if returncode == 0:
             status.update(label="✅ Análisis completado.", state="complete")
+            st.session_state["analysis_done"] = True
             time.sleep(1)
             st.rerun()
         else:
@@ -169,10 +170,22 @@ if ejecutar:
 # CARGAR DATOS
 # ══════════════════════════════════════════
 
+# Solo mostramos datos si el usuario corrió un análisis en ESTA sesión.
+# Así nunca se carga automáticamente un reporte viejo de la carpeta reports/.
+if not st.session_state.get("analysis_done"):
+    st.warning(
+        "👋 No hay análisis cargado en esta sesión. "
+        "Haz clic en **🚀 Ejecutar Análisis** para generar un reporte nuevo con datos de hoy."
+    )
+    st.stop()
+
 latest_csv = find_latest_csv()
 
 if latest_csv is None:
-    st.warning("No hay reporte todavía. Haz clic en **Ejecutar Análisis** para generar uno.")
+    st.error(
+        "El análisis corrió pero no se encontró ningún CSV en la carpeta `reports/`. "
+        "Revisa que `main.py` esté guardando el reporte correctamente."
+    )
     st.stop()
 
 try:
