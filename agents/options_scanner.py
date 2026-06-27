@@ -140,6 +140,7 @@ DEFAULT_FILTERS = {
     "min_volume":         0,    # Volumen mínimo del día (0 = no filtrar; opciones largas suelen tener vol bajo)
     "option_type":     "call",  # "call", "put" o "both"
     "max_symbols":       80,    # Cuántos símbolos escanear por corrida
+    "max_strike_dist_pct": 0.08, # Distancia MÁXIMA del strike al precio (0.08 = ±8%). Descarta strikes lejanos.
 }
 
 
@@ -296,6 +297,18 @@ def fetch_options_for_symbol(
             df["spot"]  = spot
 
             # ── FILTROS ──────────────────────────────────────
+            # MONEYNESS: descartar strikes lejanos al precio.
+            # Va PRIMERO y NO depende de los Greeks (que pueden ser NaN
+            # si yfinance no entrega IV). Solo usa strike vs. precio,
+            # que siempre existen. Esto es lo que evita los strikes lejanos.
+            max_dist = filters.get("max_strike_dist_pct", 0.08)
+            if spot and spot > 0 and max_dist and max_dist > 0:
+                dist = (df["strike"] - spot).abs() / spot
+                df["dist_strike_pct"] = (dist * 100).round(2)  # % de distancia visible
+                df = df[dist <= max_dist]
+                if df.empty:
+                    continue
+
             # Delta (ahora SÍ existe gracias a Black-Scholes)
             if df["delta"].notna().any():
                 df = df[df["delta"].abs() >= filters["min_delta"]]
@@ -397,7 +410,7 @@ def scan_market(
     # ── COLUMNAS FINALES ─────────────────────
     cols_order = [
         "symbol", "option_type", "expiration", "dte",
-        "strike", "lastPrice", "delta", "theta", "gamma", "vega",
+        "strike", "spot", "dist_strike_pct", "lastPrice", "delta", "theta", "gamma", "vega",
         "impliedVolatility", "openInterest", "volume",
         "bid", "ask", "contractSymbol", "score"
     ]
@@ -410,6 +423,8 @@ def scan_market(
         "impliedVolatility": "IV",
         "openInterest":      "OI",
         "contractSymbol":    "contrato",
+        "dist_strike_pct":   "dist_%",
+        "spot":              "precio",
     })
 
     logger.info(f"✨ Scan completo: {len(final)} contratos encontrados en {final['symbol'].nunique()} activos")
