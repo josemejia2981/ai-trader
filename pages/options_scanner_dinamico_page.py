@@ -186,7 +186,7 @@ filters = {
 
 col_btn, col_info = st.columns([1, 3])
 with col_btn:
-    run_scan = st.button("🚀 Escanear Mercado", type="primary", width="stretch")
+    run_scan = st.button("🚀 Escanear Mercado", type="primary", use_container_width=True)
 with col_info:
     est_time = max_symbols * 1.5
     st.info(
@@ -335,7 +335,7 @@ if run_scan:
 
         st.dataframe(
             fmt_df,
-            width="stretch",
+            use_container_width=True,
             height=min(600, 50 + len(fmt_df) * 35),
             column_config=column_config,
         )
